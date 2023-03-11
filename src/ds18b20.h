@@ -14,7 +14,7 @@
 #define RESOLUTION_11BIT 0x5F
 #define RESOLUTION_12BIT 0x7F
 //--------------------------------------------------
-#define DS_PORT  GPIOB   //указать порт, к которому подключены датчики
+#define DS_PORT  GPIOB   //СѓРєР°Р·Р°С‚СЊ РїРѕСЂС‚, Рє РєРѕС‚РѕСЂРѕРјСѓ РїРѕРґРєР»СЋС‡РµРЅС‹ РґР°С‚С‡РёРєРё
 #define DS_PIN 15
 
 #define GPIO_DS_PIN GPIO_PIN_15

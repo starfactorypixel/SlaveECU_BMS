@@ -29,47 +29,47 @@ void port_init(void)
 }
 
 //*********************************************************************************************
-//function  импульс сброса                                                                   //
-//argument  маска порта                                                                      //
-//return    0 - устройство обнаружен, 1 - не обнаружено, 2 - к.з. на линии                   //
+//function  РёРјРїСѓР»СЊСЃ СЃР±СЂРѕСЃР°                                                                   //
+//argument  РјР°СЃРєР° РїРѕСЂС‚Р°                                                                      //
+//return    0 - СѓСЃС‚СЂРѕР№СЃС‚РІРѕ РѕР±РЅР°СЂСѓР¶РµРЅ, 1 - РЅРµ РѕР±РЅР°СЂСѓР¶РµРЅРѕ, 2 - Рє.Р·. РЅР° Р»РёРЅРёРё                   //
 //*********************************************************************************************
 uint8_t ds_reset_pulse(uint16_t PinMask)
 {
    uint16_t result;   
  
-   if((DS_PORT->IDR & PinMask)==0)  return 2;         //проверить линию на отсутствие замыкания
-   DS_PORT->ODR &= ~PinMask;                          //потянуть шину к земле
-   DelayMicro(485);																//задержка как минимум на 480 микросекунд
-   DS_PORT->ODR |=  PinMask;                          //отпустить шину
-   DelayMicro(65);																//задержка как минимум на 65 микросекунд
-   result =  DS_PORT->IDR & PinMask;                 //прочитать шину 
-   DelayMicro(500);																//задержка как минимум на 480 микросекунд
-   if(result) return 1;                            //датчик не обнаружен
-   return 0;                                       //датчик обнаружен      
+   if((DS_PORT->IDR & PinMask)==0)  return 2;         //РїСЂРѕРІРµСЂРёС‚СЊ Р»РёРЅРёСЋ РЅР° РѕС‚СЃСѓС‚СЃС‚РІРёРµ Р·Р°РјС‹РєР°РЅРёСЏ
+   DS_PORT->ODR &= ~PinMask;                          //РїРѕС‚СЏРЅСѓС‚СЊ С€РёРЅСѓ Рє Р·РµРјР»Рµ
+   DelayMicro(485);																//Р·Р°РґРµСЂР¶РєР° РєР°Рє РјРёРЅРёРјСѓРј РЅР° 480 РјРёРєСЂРѕСЃРµРєСѓРЅРґ
+   DS_PORT->ODR |=  PinMask;                          //РѕС‚РїСѓСЃС‚РёС‚СЊ С€РёРЅСѓ
+   DelayMicro(65);																//Р·Р°РґРµСЂР¶РєР° РєР°Рє РјРёРЅРёРјСѓРј РЅР° 65 РјРёРєСЂРѕСЃРµРєСѓРЅРґ
+   result =  DS_PORT->IDR & PinMask;                 //РїСЂРѕС‡РёС‚Р°С‚СЊ С€РёРЅСѓ 
+   DelayMicro(500);																//Р·Р°РґРµСЂР¶РєР° РєР°Рє РјРёРЅРёРјСѓРј РЅР° 480 РјРёРєСЂРѕСЃРµРєСѓРЅРґ
+   if(result) return 1;                            //РґР°С‚С‡РёРє РЅРµ РѕР±РЅР°СЂСѓР¶РµРЅ
+   return 0;                                       //РґР°С‚С‡РёРє РѕР±РЅР°СЂСѓР¶РµРЅ      
 }
 
 //--------------------------------------------------
 uint8_t ds18b20_Reset(void)
 {
   uint16_t status;
-	GPIOB->ODR &= ~GPIO_DS_PIN_OUT;//низкий уровень
-  DelayMicro(485);//задержка как минимум на 480 микросекунд
-  GPIOB->ODR |= GPIO_DS_PIN_OUT;//высокий уровень
-  DelayMicro(65);//задержка как минимум на 60 микросекунд
-  status = GPIOB->IDR & GPIO_DS_PIN_READ;//проверяем уровень
-  DelayMicro(500);//задержка как минимум на 480 микросекунд
-  //(на всякий случай подождём побольше, так как могут быть неточности в задержке)
-  return (status ? 1 : 0);//вернём результат
+	GPIOB->ODR &= ~GPIO_DS_PIN_OUT;//РЅРёР·РєРёР№ СѓСЂРѕРІРµРЅСЊ
+  DelayMicro(485);//Р·Р°РґРµСЂР¶РєР° РєР°Рє РјРёРЅРёРјСѓРј РЅР° 480 РјРёРєСЂРѕСЃРµРєСѓРЅРґ
+  GPIOB->ODR |= GPIO_DS_PIN_OUT;//РІС‹СЃРѕРєРёР№ СѓСЂРѕРІРµРЅСЊ
+  DelayMicro(65);//Р·Р°РґРµСЂР¶РєР° РєР°Рє РјРёРЅРёРјСѓРј РЅР° 60 РјРёРєСЂРѕСЃРµРєСѓРЅРґ
+  status = GPIOB->IDR & GPIO_DS_PIN_READ;//РїСЂРѕРІРµСЂСЏРµРј СѓСЂРѕРІРµРЅСЊ
+  DelayMicro(500);//Р·Р°РґРµСЂР¶РєР° РєР°Рє РјРёРЅРёРјСѓРј РЅР° 480 РјРёРєСЂРѕСЃРµРєСѓРЅРґ
+  //(РЅР° РІСЃСЏРєРёР№ СЃР»СѓС‡Р°Р№ РїРѕРґРѕР¶РґС‘Рј РїРѕР±РѕР»СЊС€Рµ, С‚Р°Рє РєР°Рє РјРѕРіСѓС‚ Р±С‹С‚СЊ РЅРµС‚РѕС‡РЅРѕСЃС‚Рё РІ Р·Р°РґРµСЂР¶РєРµ)
+  return (status ? 1 : 0);//РІРµСЂРЅС‘Рј СЂРµР·СѓР»СЊС‚Р°С‚
 }
 //----------------------------------------------------------
 uint8_t ds18b20_ReadBit(void)
 {
   uint8_t bit = 0;
-  GPIOB->ODR &= ~GPIO_DS_PIN_OUT;//низкий уровень
+  GPIOB->ODR &= ~GPIO_DS_PIN_OUT;//РЅРёР·РєРёР№ СѓСЂРѕРІРµРЅСЊ
   DelayMicro(2);
-	GPIOB->ODR |= GPIO_DS_PIN_OUT;//высокий уровень
+	GPIOB->ODR |= GPIO_DS_PIN_OUT;//РІС‹СЃРѕРєРёР№ СѓСЂРѕРІРµРЅСЊ
 	DelayMicro(13);
-	bit = (GPIOB->IDR & GPIO_DS_PIN_READ ? 1 : 0);//проверяем уровень	
+	bit = (GPIOB->IDR & GPIO_DS_PIN_READ ? 1 : 0);//РїСЂРѕРІРµСЂСЏРµРј СѓСЂРѕРІРµРЅСЊ	
 	DelayMicro(45);
   return bit;
 }
@@ -106,7 +106,7 @@ uint8_t ds18b20_SearhRom(uint8_t *Addr)
   uint8_t last_zero, rom_byte_number, search_result;
   uint8_t id_bit, cmp_id_bit;
   uint8_t rom_byte_mask, search_direction;
-  //проинициализируем переменные
+  //РїСЂРѕРёРЅРёС†РёР°Р»РёР·РёСЂСѓРµРј РїРµСЂРµРјРµРЅРЅС‹Рµ
   id_bit_number = 1;
   last_zero = 0;
   rom_byte_number = 0;
@@ -153,7 +153,7 @@ uint8_t ds18b20_SearhRom(uint8_t *Addr)
 				rom_byte_mask = 1;
 			}
 		}
-  } while(rom_byte_number < 8); // считываем байты с 0 до 7 в цикле
+  } while(rom_byte_number < 8); // СЃС‡РёС‚С‹РІР°РµРј Р±Р°Р№С‚С‹ СЃ 0 РґРѕ 7 РІ С†РёРєР»Рµ
 	if (!(id_bit_number < 65))
   {
 	  // search successful so set LastDiscrepancy,LastDeviceFlag,search_result
@@ -188,9 +188,9 @@ uint8_t ds18b20_init(uint8_t mode)
 		ds18b20_WriteByte(0xCC);
 		//WRITE SCRATCHPAD
 		ds18b20_WriteByte(0x4E);
-		//TH REGISTER 100 градусов
+		//TH REGISTER 100 РіСЂР°РґСѓСЃРѕРІ
 		ds18b20_WriteByte(0x64);
-		//TL REGISTER - 30 градусов
+		//TL REGISTER - 30 РіСЂР°РґСѓСЃРѕРІ
 		ds18b20_WriteByte(0x9E);
 		//Resolution 12 bit
 		ds18b20_WriteByte(RESOLUTION_12BIT);
@@ -217,9 +217,9 @@ uint8_t ds18b20_init(uint8_t mode)
 			}
 			//WRITE SCRATCHPAD
 			ds18b20_WriteByte(0x4E);
-			//TH REGISTER 100 градусов
+			//TH REGISTER 100 РіСЂР°РґСѓСЃРѕРІ
 			ds18b20_WriteByte(0x64);
-			//TL REGISTER - 30 градусов
+			//TL REGISTER - 30 РіСЂР°РґСѓСЃРѕРІ
 			ds18b20_WriteByte(0x9E);
 			//Resolution 12 bit
 			ds18b20_WriteByte(RESOLUTION_12BIT);
@@ -278,7 +278,7 @@ void ds18b20_ReadStratcpad(uint8_t mode, uint8_t *Data, uint8_t DevNum)
 //----------------------------------------------------------
 uint8_t ds18b20_GetSign(uint16_t dt)
 {
-  //Проверим 11-й бит
+  //РџСЂРѕРІРµСЂРёРј 11-Р№ Р±РёС‚
   if (dt&(1<<11)) return 1;
   else return 0;
 }
@@ -286,8 +286,8 @@ uint8_t ds18b20_GetSign(uint16_t dt)
 float ds18b20_Convert(uint16_t dt)
 {
   float t;
-  t = (float) ((dt&0x07FF)>>4); //отборосим знаковые и дробные биты
-  //Прибавим дробную часть
+  t = (float) ((dt&0x07FF)>>4); //РѕС‚Р±РѕСЂРѕСЃРёРј Р·РЅР°РєРѕРІС‹Рµ Рё РґСЂРѕР±РЅС‹Рµ Р±РёС‚С‹
+  //РџСЂРёР±Р°РІРёРј РґСЂРѕР±РЅСѓСЋ С‡Р°СЃС‚СЊ
   t += (float)(dt&0x000F) / 16.0f;
   return t;
 }

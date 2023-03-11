@@ -203,16 +203,12 @@ void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
 						TxData[0] = 0x51;				
 						HAL_CAN_Send_Obj(&Temperature1);
 					}
-					RxHeader.StdId = 0;
-					RxData[0] = 0x11;
           break;
       	case 0x0048:
 					if(RxData[0] == 0x11){		
 						TxData[0] = 0x51;				
 						HAL_CAN_Send_Obj(&Temperature2);
 					}
-					RxHeader.StdId = 0;
-					RxData[0] = 0x11;
           break;
       	case 0x0049:
 					if(RxData[0] == 0x11){		
@@ -220,13 +216,8 @@ void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
 
 						HAL_CAN_Send_Obj(&Temperature3);
 					}
-					RxHeader.StdId = 0;
-					RxData[0] = 0x11;
       		break;
-
       	default:
-					RxHeader.StdId = 0;
-					RxData[0] = 0x11;
       		break;
       }
 
@@ -282,10 +273,10 @@ void readADC(void){
 		sprintf(str1," %d \r\n",ADC_senors[i]);
 		HAL_UART_Transmit(&huart1,(uint8_t*)str1,strlen(str1),0x1000);
 	}
-	for(uint8_t i=1;i<=8;i++){
+	for(uint8_t i=1;i<8;i++){
 		Temperature1.data[i] = ADC_senors[i-1]/256;
 	}
-	for(uint8_t i=1;i<=4;i++){
+	for(uint8_t i=1;i<4;i++){
 		Temperature2.data[i] = ADC_senors[i+6]/256;
 	}
 }
