@@ -264,7 +264,7 @@ void HAL_CAN_Send_Obj(_params_v *params_obj)
 {
 	TxHeader.StdId = params_obj->ID;
 	TxHeader.DLC = params_obj->length;
-	for(uint8_t i=1;i<=HighCurrent.length;i++){
+	for(uint8_t i=1;i<params_obj->length;i++){
 		TxData[i] = params_obj->data[i];
 	}
 	HAL_CAN_Send();
@@ -406,13 +406,9 @@ int main(void)
 	MaxTemperature.data[1] = 0x00;
 	MaxTemperature.data[2] = 0x19;
 
-
 	Temperature1.length = 8;			
 	Temperature2.length = 8;		
-
-
-
-
+  // прочитать сохраненные параметры из Flash
 	readEeprom(7);
 	
 	/* 
@@ -431,7 +427,6 @@ int main(void)
 	TxHeader.DLC = 8;
 	TxHeader.TransmitGlobalTime = DISABLE;
 	
-	
 	/* активируем события которые будут вызывать прерывания  */
 	HAL_CAN_ActivateNotification(&hcan, CAN_IT_RX_FIFO1_MSG_PENDING | CAN_IT_ERROR | CAN_IT_BUSOFF | CAN_IT_LAST_ERROR_CODE);
 	HAL_CAN_Start(&hcan);
@@ -439,7 +434,6 @@ int main(void)
 	HAL_UARTEx_ReceiveToIdle_IT(&huart3, (uint8_t*) receiveBuff_huart3, 100);
 	STBY_L();				// MCP2562 STBY mode = normal
 	
-
 // опросить датчики ds18b20
 	port_init();
 	status = ds18b20_init(NO_SKIP_ROM);
@@ -464,7 +458,8 @@ int main(void)
 		HAL_UART_Transmit(&huart1,(uint8_t*)str1,strlen(str1),0x1000);
 	}
 
-	HAL_ADC_Start_DMA(&hadc1, (uint32_t*)ADC_value, 10);			// запустить в цикле опрос 10 каналов ADC через DMA
+  // запустить в цикле опрос 10 каналов ADC через DMA
+	HAL_ADC_Start_DMA(&hadc1, (uint32_t*)ADC_value, 10);			
 
 	// записать значения таймера
 	HighVoltage.current_timer = HAL_GetTick();
@@ -545,11 +540,6 @@ int main(void)
 			HAL_CAN_Send();
 		}
 		
-
-
-		
-		
-
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
