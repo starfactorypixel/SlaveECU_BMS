@@ -187,6 +187,7 @@ void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
 							write_flash();
 						}
 					}
+          break;
       	case 0x0046:
 					if(RxData[0] == 0x11){		// ���� ������ ������, �� ����� ��������
 						TxData[0] = 0x51;				// ��� ��������� 0x51 - ����� �� ������, ���������� "����������" ��������.
@@ -198,6 +199,7 @@ void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
 							write_flash();
 						}
 					}
+          break;
       	case 0x0047:
 					if(RxData[0] == 0x11){		// ���� ������ ������, �� ����� ��������
 						TxData[0] = 0x51;				// ��� ��������� 0x51 - ����� �� ������, ���������� "����������" ��������.
@@ -205,6 +207,7 @@ void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
 					}
 					RxHeader.StdId = 0;
 					RxData[0] = 0x11;
+          break;
       	case 0x0048:
 					if(RxData[0] == 0x11){		// ���� ������ ������, �� ����� ��������
 						TxData[0] = 0x51;				// ��� ��������� 0x51 - ����� �� ������, ���������� "����������" ��������.
@@ -212,6 +215,7 @@ void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
 					}
 					RxHeader.StdId = 0;
 					RxData[0] = 0x11;
+          break;
       	case 0x0049:
 					if(RxData[0] == 0x11){		// ���� ������ ������, �� ����� ��������
 						TxData[0] = 0x51;				// ��� ��������� 0x51 - ����� �� ������, ���������� "����������" ��������.
