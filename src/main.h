@@ -34,6 +34,7 @@ extern "C" {
 /* USER CODE BEGIN Includes */
 #include "ds18b20.h"
 #include "flash.h"
+//
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
