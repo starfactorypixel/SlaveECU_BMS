@@ -23,7 +23,6 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "Params.h"
-// #include "flash.h"
 #include <stdio.h>
 #include <stdlib.h>
 /* USER CODE END Includes */
@@ -40,10 +39,10 @@
 #define Button1 		HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_8)
 #define Button2 		HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_9)
 #define Button2 		HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_9)
-#define STBY_H()        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);		// ���������� ����� � High
-#define STBY_L()        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);	// ���������� ����� � Low
+#define STBY_H()        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);		// High
+#define STBY_L()        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);	// Low
 
-#define MARKER_FIRST_START  100           // ������ ��� flash ������
+#define MARKER_FIRST_START  100           // Маркер что flash не пустая
 
 /* USER CODE END PD */
 
@@ -91,7 +90,6 @@ UART_HandleTypeDef huart3;
 	uint8_t receiveBuffStat_huart3[200];
 	uint16_t ReciveUartSize = 0;
 	uint8_t FlagReciveUART3 = 0;
-//		uint16_t Block_id = BlockInfo.ID;
 	//------------------------ FLASH
 	uint16_t write_data16[20];
 	uint16_t read_data16[20];
@@ -119,14 +117,14 @@ void write_flash();
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-//-------------------------------- ���������� �� USART3 �� ����� Idle
+//-------------------------------- Прерывание от USART3 по флагу Idle
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size){
 	if(huart->Instance == USART3){
 		ReciveUartSize = Size;
 		if(Size > 140 && receiveBuff_huart3[0]== 0x05 && receiveBuff_huart3[1]== 0x05){		// if  header? 
 			FlagReciveUART3 = 1;
 			
-			// ������� ������
+			// парсинг пакета
 			for(uint16_t i = 0; i != Size; i++){
 				receiveBuffStat_huart3[i] = receiveBuff_huart3[i];
 			}
@@ -138,15 +136,15 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size){
 	}
 }
 
-//-------------------------------- ���������� �� ������� TIM1
+//-------------------------------- Прерывание от таймера TIM1
 void	IRQHandlerTIM1( void){
 
 }
 	
 /* 
-	������ ��� ����� ������ (��� ������ RX_FIFO_1)
-	��� ����� ������ ����� �� ��� �� �������� ��� �� ��������� ����� � ������� ������� HAL_CAN_GetRxMessage(...)
-	�����!!!!!!  ��� ������ ����� � MX_CAN_Init() ��������� ��������� �������
+	Колбек для приёма данных CAN (для буфера RX_FIFO_1)
+	При приёме любого кадра тут же забираем его из почтового ящика с помощью функции HAL_CAN_GetRxMessage(...)
+	ВАЖНО!!!!!!  для приема нужно в MX_CAN_Init() прописать настройки фильтра
 */
 void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
 {
@@ -165,8 +163,8 @@ void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
 					}
       		break;
       	case 0x0044:
-					if(RxData[0] == 0x11){		// ���� ������ ������, �� ����� ��������
-						TxData[0] = 0x51;				// ��� ��������� 0x51 - ����� �� ������, ���������� "����������" ��������.
+					if(RxData[0] == 0x11){		// Если пришел запрос, то нужно отвечать
+						TxData[0] = 0x51;				// Тип сообшения 0x51 - ответ на запрос, актуальное "нормальное" значение.
 						HAL_CAN_Send_Obj(&HighVoltage);
 					}
 					else{
@@ -177,8 +175,8 @@ void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
 					}
       		break;
       	case 0x0045:
-					if(RxData[0] == 0x11){		// ���� ������ ������, �� ����� ��������
-						TxData[0] = 0x51;				// ��� ��������� 0x51 - ����� �� ������, ���������� "����������" ��������.
+					if(RxData[0] == 0x11){		
+						TxData[0] = 0x51;				
 						HAL_CAN_Send_Obj(&HighCurrent);
 					}
 					else{
@@ -189,8 +187,8 @@ void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
 					}
           break;
       	case 0x0046:
-					if(RxData[0] == 0x11){		// ���� ������ ������, �� ����� ��������
-						TxData[0] = 0x51;				// ��� ��������� 0x51 - ����� �� ������, ���������� "����������" ��������.
+					if(RxData[0] == 0x11){		
+						TxData[0] = 0x51;				
 						HAL_CAN_Send_Obj(&MaxTemperature);
 					}
 					else{
@@ -201,24 +199,24 @@ void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
 					}
           break;
       	case 0x0047:
-					if(RxData[0] == 0x11){		// ���� ������ ������, �� ����� ��������
-						TxData[0] = 0x51;				// ��� ��������� 0x51 - ����� �� ������, ���������� "����������" ��������.
+					if(RxData[0] == 0x11){		
+						TxData[0] = 0x51;				
 						HAL_CAN_Send_Obj(&Temperature1);
 					}
 					RxHeader.StdId = 0;
 					RxData[0] = 0x11;
           break;
       	case 0x0048:
-					if(RxData[0] == 0x11){		// ���� ������ ������, �� ����� ��������
-						TxData[0] = 0x51;				// ��� ��������� 0x51 - ����� �� ������, ���������� "����������" ��������.
+					if(RxData[0] == 0x11){		
+						TxData[0] = 0x51;				
 						HAL_CAN_Send_Obj(&Temperature2);
 					}
 					RxHeader.StdId = 0;
 					RxData[0] = 0x11;
           break;
       	case 0x0049:
-					if(RxData[0] == 0x11){		// ���� ������ ������, �� ����� ��������
-						TxData[0] = 0x51;				// ��� ��������� 0x51 - ����� �� ������, ���������� "����������" ��������.
+					if(RxData[0] == 0x11){		
+						TxData[0] = 0x51;				
 
 						HAL_CAN_Send_Obj(&Temperature3);
 					}
@@ -281,7 +279,7 @@ void readADC(void){
 		ADC_senors[i] = ADC_value[i];
 		sprintf(str1,"ADC %d =", i);
 		HAL_UART_Transmit(&huart1,(uint8_t*)str1,strlen(str1),0x1000);
-		sprintf(str1," %d \r\n",ADC_senors[i]);//����������� ��������� � ������
+		sprintf(str1," %d \r\n",ADC_senors[i]);
 		HAL_UART_Transmit(&huart1,(uint8_t*)str1,strlen(str1),0x1000);
 	}
 	for(uint8_t i=1;i<=8;i++){
@@ -310,15 +308,15 @@ void readEeprom (uint8_t num){
 
 	Read_flash_16b(num);
 
-	// ��������� �������� ������ EEPROM ������
-	// ���� � flash ��� ������, �� ��������� � ������������� ������, �����������, EEPROM ����������������
+	// Обработка ситуации чистой EEPROM памяти
+	// Если в flash нет данных, то заполнить и устанавливить маркер, указывающий, EEPROM инициализировано
 	if(read_data16[0] != MARKER_FIRST_START){
 		HighVoltage.timer_ms = 1000;
-		HighVoltage.state = 0x01;				// ������ �������� = ������� �� �������
+		HighVoltage.state = 0x01;				// Статус действия = отравка по таймеру
 		HighCurrent.timer_ms = 1000;
-		HighCurrent.state = 0x01;				// ������ �������� = ������� �� �������
+		HighCurrent.state = 0x01;				
 		MaxTemperature.timer_ms = 5000;
-		MaxTemperature.state = 0x01;				// ������ �������� = ������� �� �������
+		MaxTemperature.state = 0x01;		
 		write_flash();
 	}
 	
@@ -379,41 +377,38 @@ int main(void)
 	
 	HAL_TIM_Base_Start_IT(&htim1);
 	
-	// ���������� ��������� ��������� �� ���������
-	HighVoltage.state = 0x01;				// ������ �������� = ������� �� �������
-	HighVoltage.timer_ms = 1000;		// ������ �������� ��������� � ms.
-	HighVoltage.length = 5;					// ����� ������ + 1 ���� type
-	HighVoltage.data[0] = 0x61;			// ��� ��������� 0x61 - ������� �� �������, ���������� "����������" ��������. ����� �� �������.
+	// установить начальные параметры по умолчанию
+	HighVoltage.state = 0x01;				// Статус действия = отравка по таймеру
+	HighVoltage.timer_ms = 1000;		// Период отправки сообшений в ms.
+	HighVoltage.length = 5;					// Длина данных + 1 байт type
+	HighVoltage.data[0] = 0x61;			// Тип сообшения 0x61 - событие по таймеру, актуальное "нормальное" значение. Взято из таблицы.
 	// 0x000124F8 = 75000 mV
 	HighVoltage.data[1] = 0x00;
 	HighVoltage.data[2] = 0x01;
 	HighVoltage.data[3] = 0x24;
 	HighVoltage.data[4] = 0xF8;
 	
-	HighCurrent.state = 0x01;				// ������ �������� = ������� �� �������
-	HighCurrent.timer_ms = 1000;		// ������ �������� ��������� � ms.
-	HighCurrent.length = 5;					// ����� ������ + 1 ���� type
-	HighCurrent.data[0] = 0x61;			// ��� ��������� 0x61 - ������� �� �������, ���������� "����������" ��������. ����� �� �������.
+	HighCurrent.state = 0x01;				
+	HighCurrent.timer_ms = 1000;		
+	HighCurrent.length = 5;					
+	HighCurrent.data[0] = 0x61;			
 	// 0x00001388 =  5000 mA
 	HighCurrent.data[1] = 0x00;
 	HighCurrent.data[2] = 0x00;
 	HighCurrent.data[3] = 0x13;
 	HighCurrent.data[4] = 0x88;
 	
-	MaxTemperature.state = 0x01;				// ������ �������� = ������� �� �������
-	MaxTemperature.timer_ms = 5000;	// ������ �������� ��������� � ms.
-	MaxTemperature.length = 3;			// ����� ������ + 1 ���� type
-	MaxTemperature.data[0] = 0x61;	// ��� ��������� 0x61 - ������� �� �������, ���������� "����������" ��������. ����� �� �������.
+	MaxTemperature.state = 0x01;				
+	MaxTemperature.timer_ms = 5000;	
+	MaxTemperature.length = 3;			
+	MaxTemperature.data[0] = 0x61;	
 	// 0x0019 =  25
 	MaxTemperature.data[1] = 0x00;
 	MaxTemperature.data[2] = 0x19;
-//	MaxTemperature.data[3] = 0x13;
-//	MaxTemperature.data[4] = 0x88;
 
 
-
-	Temperature1.length = 8;			// ����� ������ + 1 ���� type
-	Temperature2.length = 8;			// ����� ������ + 1 ���� type
+	Temperature1.length = 8;			
+	Temperature2.length = 8;		
 
 
 
@@ -421,13 +416,13 @@ int main(void)
 	readEeprom(7);
 	
 	/* 
-		��������� ��������� ���������� �� �������� ������
-		StdId � ��� ������������� ������������ �����.
-		ExtId � ��� ������������� ������������ �����. �� ����� ���������� ����������� ������� ���� ����� 0.
-		RTR = CAN_RTR_DATA � ��� ������� � ���, ��� �� ���������� ���� � ������� (Data Frame). ���� ������� CAN_RTR_REMOTE, ����� ��� ����� Remote Frame.
-		IDE = CAN_ID_STD � ��� ������� � ���, ��� �� ���������� ����������� ����. ���� ������� CAN_ID_EXT, ����� ��� ����� ����������� ����. � StdId ����� ����� ������� 0, � � ExtId �������� ����������� �������������.
-		DLC = 8 � ���������� �������� ���� ������������ � ����� (�� 1 �� 8).
-		TransmitGlobalTime � ��������� � Time Triggered Communication Mode, �� ��� �� ���������� ������� ����� 0.
+		Заполняем структуру отвечающую за отправку кадров
+		StdId — это идентификатор стандартного кадра.
+		ExtId — это идентификатор расширенного кадра. Мы будем отправлять стандартный поэтому сюда пишем 0.
+		RTR = CAN_RTR_DATA — это говорит о том, что мы отправляем кадр с данными (Data Frame). Если указать CAN_RTR_REMOTE, тогда это будет Remote Frame.
+		IDE = CAN_ID_STD — это говорит о том, что мы отправляем стандартный кадр. Если указать CAN_ID_EXT, тогда это будет расширенный кадр. В StdId нужно будет указать 0, а в ExtId записать расширенный идентификатор.
+		DLC = 8 — количество полезных байт передаваемых в кадре (от 1 до 8).
+		TransmitGlobalTime — относится к Time Triggered Communication Mode, мы это не используем поэтому пишем 0.
 	*/
 	TxHeader.StdId = 0x07B0;
 	TxHeader.ExtId = 0;
@@ -437,15 +432,15 @@ int main(void)
 	TxHeader.TransmitGlobalTime = DISABLE;
 	
 	
-	/* ���������� ������� ������� ����� �������� ����������  */
+	/* активируем события которые будут вызывать прерывания  */
 	HAL_CAN_ActivateNotification(&hcan, CAN_IT_RX_FIFO1_MSG_PENDING | CAN_IT_ERROR | CAN_IT_BUSOFF | CAN_IT_LAST_ERROR_CODE);
 	HAL_CAN_Start(&hcan);
-	/* ���������� ���������� USART3*/
+	/* активируем прерывания USART3*/
 	HAL_UARTEx_ReceiveToIdle_IT(&huart3, (uint8_t*) receiveBuff_huart3, 100);
 	STBY_L();				// MCP2562 STBY mode = normal
 	
 
-// �������� ������� ds18b20
+// опросить датчики ds18b20
 	port_init();
 	status = ds18b20_init(NO_SKIP_ROM);
 	sprintf(str1,"Init Status: %d\r\n",status);
@@ -469,9 +464,9 @@ int main(void)
 		HAL_UART_Transmit(&huart1,(uint8_t*)str1,strlen(str1),0x1000);
 	}
 
-	HAL_ADC_Start_DMA(&hadc1, (uint32_t*)ADC_value, 10);			// ��������� � ����� ����� 10 ������� ADC ����� DMA
+	HAL_ADC_Start_DMA(&hadc1, (uint32_t*)ADC_value, 10);			// запустить в цикле опрос 10 каналов ADC через DMA
 
-	// �������� �������� �������
+	// записать значения таймера
 	HighVoltage.current_timer = HAL_GetTick();
 	HighCurrent.current_timer = HAL_GetTick();
 	MaxTemperature.current_timer = HAL_GetTick();
@@ -484,20 +479,20 @@ int main(void)
   {
 		if((HAL_GetTick() - HighVoltage.current_timer) > HighVoltage.timer_ms && HighVoltage.state == 0x01){
 			HighVoltage.current_timer = HAL_GetTick();
-			TxData[0] = 0x61;				// ��� ��������� 0x61 - ������� �� �������, ���������� "����������" ��������.
+			TxData[0] = 0x61;				// Тип сообшения 0x61 - событие по таймеру, актуальное "нормальное" значение.
 			HAL_CAN_Send_Obj(&HighVoltage);
 		}
 		if((HAL_GetTick() - HighCurrent.current_timer) > HighCurrent.timer_ms && HighCurrent.state == 0x01) {
 			HighCurrent.current_timer = HAL_GetTick();
-			TxData[0] = 0x61;				// ��� ��������� 0x61 - ������� �� �������, ���������� "����������" ��������.
+			TxData[0] = 0x61;				
 			HAL_CAN_Send_Obj(&HighCurrent);
 		}
 		if((HAL_GetTick() - MaxTemperature.current_timer) > MaxTemperature.timer_ms && MaxTemperature.state == 0x01){
 			MaxTemperature.current_timer = HAL_GetTick();
 			
-			readADC(); // ��������� ��� ������ ADC
+			readADC(); // прочитать все каналы ADC
 		
-			// ��������� ��� ������� DS18B20
+			// прочитать все датчики DS18B20
 			for(uint8_t i=1;i<=Dev_Cnt;i++)
 			{
 				ds18b20_MeasureTemperCmd(NO_SKIP_ROM, i);
@@ -519,7 +514,7 @@ int main(void)
 			}
 			Temperature3.length = Dev_Cnt+1;
 			
-			TxData[0] = 0x61;				// ��� ��������� 0x61 - ������� �� �������, ���������� "����������" ��������.
+			TxData[0] = 0x61;				
 			HAL_CAN_Send_Obj(&MaxTemperature);
 		}
 		
