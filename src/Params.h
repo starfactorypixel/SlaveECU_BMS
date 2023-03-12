@@ -7,6 +7,28 @@
 extern "C" {
 #endif
 
+#define ThresholdTemperature1   60      // пороговое значение предельной температуры
+
+#define BlockInfo_ID            ((uint16_t)0x0040) 
+#define BlockHealth_ID          ((uint16_t)0x0041) 
+#define BlockCfg_ID             ((uint16_t)0x0042) 
+#define BlockError_ID           ((uint16_t)0x0043) 
+#define HighVoltage_ID          ((uint16_t)0x0044) 
+#define HighCurrent_ID          ((uint16_t)0x0045) 
+#define MaxTemperature_ID       ((uint16_t)0x0046) 
+#define Temperature1_ID         ((uint16_t)0x0047) 
+#define Temperature2_ID         ((uint16_t)0x0048) 
+#define Temperature3_ID         ((uint16_t)0x0049) 
+#define LowVoltage1_3_ID        ((uint16_t)0x004A) 
+#define LowVoltage4_6_ID        ((uint16_t)0x004B) 
+#define LowVoltage7_9_ID        ((uint16_t)0x004C) 
+#define LowVoltage10_12_ID      ((uint16_t)0x004D) 
+#define LowVoltage13_15_ID      ((uint16_t)0x004E) 
+#define LowVoltage16_18_ID      ((uint16_t)0x004F) 
+#define LowVoltage19_21_ID      ((uint16_t)0x0050) 
+#define LowVoltage22_24_ID      ((uint16_t)0x0051) 
+#define LowVoltageMinMaxDelta_ID ((uint16_t)0x0052) 
+
 
 struct params_t
         {
@@ -90,25 +112,25 @@ typedef struct
     uint8_t state;            // Состояние
 } _params_v;
 
-_params_v BlockInfo = 			{0x0040};
-_params_v BlockHealth = 		{0x0041};
-_params_v BlockCfg = 			{0x0042};
-_params_v BlockError = 		{0x0043};
-_params_v HighVoltage = 		{0x0044};
-_params_v HighCurrent = 		{0x0045};
-_params_v MaxTemperature = {0x0046};
-_params_v Temperature1 = 	{0x0047};
-_params_v Temperature2 = 	{0x0048};
-_params_v Temperature3 = 	{0x0049};
-_params_v LowVoltage1_3 = 	{0x004A};
-_params_v LowVoltage4_6 = 	{0x004B};
-_params_v LowVoltage7_9 = 	{0x004C};
-_params_v LowVoltage10_12 ={0x004D};
-_params_v LowVoltage13_15 ={0x004E};
-_params_v LowVoltage16_18 ={0x004F};
-_params_v LowVoltage19_21 ={0x0050};
-_params_v LowVoltage22_24 ={0x0051};
-_params_v LowVoltageMinMaxDelta ={0x0052};
+_params_v BlockInfo =       {BlockInfo_ID};
+_params_v BlockHealth =     {BlockHealth_ID};
+_params_v BlockCfg =        {BlockCfg_ID};
+_params_v BlockError =      {BlockError_ID};
+_params_v HighVoltage =     {HighVoltage_ID};
+_params_v HighCurrent =     {HighCurrent_ID};
+_params_v MaxTemperature =  {MaxTemperature_ID};
+_params_v Temperature1 =    {Temperature1_ID};
+_params_v Temperature2 =    {Temperature2_ID};
+_params_v Temperature3 =    {Temperature3_ID};
+_params_v LowVoltage1_3 =   {LowVoltage1_3_ID};
+_params_v LowVoltage4_6 =   {LowVoltage4_6_ID};
+_params_v LowVoltage7_9 =   {LowVoltage7_9_ID};
+_params_v LowVoltage10_12 = {LowVoltage10_12_ID};
+_params_v LowVoltage13_15 = {LowVoltage13_15_ID};
+_params_v LowVoltage16_18 = {LowVoltage16_18_ID};
+_params_v LowVoltage19_21 = {LowVoltage19_21_ID};
+_params_v LowVoltage22_24 = {LowVoltage22_24_ID};
+_params_v LowVoltageMinMaxDelta ={LowVoltageMinMaxDelta_ID};
 
 #ifdef __cplusplus
 }
