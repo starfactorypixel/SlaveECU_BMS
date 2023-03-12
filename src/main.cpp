@@ -193,7 +193,8 @@ void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
           break;
       	case Temperature1_ID:
 					if(RxData[0] == 0x11){		
-						TxData[0] = 0x51;				
+						TxData[0] = 0x51;	
+            Temperature1.length = 8;	
 						HAL_CAN_Send_Obj(&Temperature1);
 					}
           break;
@@ -226,7 +227,7 @@ void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
       }
 
 #ifdef DEBAG
-			sprintf(str1,"CAN %d", RxHeader.StdId);
+			sprintf(str1,"CAN %c", RxHeader.StdId);
 			HAL_UART_Transmit(&huart1, (uint8_t*)str1, strlen(str1), 100);	
 #endif
 			
@@ -249,7 +250,7 @@ void HAL_CAN_Send()
 		if(HAL_CAN_AddTxMessage(&hcan, &TxHeader, TxData, &TxMailbox) != HAL_OK)
 		{
 #ifdef DEBAG
-			sprintf(str1,"CAN %d", RxHeader.StdId);
+			sprintf(str1,"CAN %c", RxHeader.StdId);
 			HAL_UART_Transmit(&huart1, (uint8_t*)"ER SEND\n", 8, 100);
 #endif
 		}
@@ -259,13 +260,18 @@ void HAL_CAN_Send_Obj(_params_v *params_obj)
 {
 	TxHeader.StdId = params_obj->ID;
 	TxHeader.DLC = params_obj->length;
-	for(uint8_t i=1;i<params_obj->length;i++){
+	for(uint8_t i=1;i<8;i++){
 		TxData[i] = params_obj->data[i];
 	}
 	HAL_CAN_Send();
 }
 
-
+uint8_t ADCtoTEMPER(uint16_t adc_val){
+  uint8_t result;
+	result = ((adc_val&0x07FF)>>6);
+  // result = adc_val/256;
+  return result;
+}
 
 void readADC(void){
 	
@@ -278,12 +284,12 @@ void readADC(void){
 		HAL_UART_Transmit(&huart1,(uint8_t*)str1,strlen(str1),0x1000);
 	}
 	for(uint8_t i=1;i<8;i++){
-		Temperature1.data[i] = ADC_senors[i-1]/256;
+    Temperature1.data[i] = ADCtoTEMPER(ADC_senors[i-1]);
     if(Temperature1.data[i]>MaxTemperature.data[1])
       MaxTemperature.data[1] = Temperature1.data[i];
 	}
 	for(uint8_t i=1;i<4;i++){
-		Temperature2.data[i] = ADC_senors[i+6]/256;
+    Temperature2.data[i] = ADCtoTEMPER(ADC_senors[i+6]);
     if(Temperature2.data[i]>MaxTemperature.data[1])
       MaxTemperature.data[1] = Temperature2.data[i];
 	}
@@ -315,7 +321,6 @@ void write_flash(){
 	Erase_flash(21);
 	Write_flash_16b(21);
 }
-
 
 void readEeprom (uint8_t num){
 
@@ -371,9 +376,6 @@ void readEeprom (uint8_t num){
   MaxTemperature.data[2] = read_data16[20];
 }
 	
-
-
-
 /* USER CODE END 0 */
 
 /**
@@ -527,11 +529,6 @@ int main(void)
 			MaxTemperature.current_timer = HAL_GetTick();
 			MaxTemperature.data[1]=0;
 			readADC(); // прочитать все каналы ADC
-		
-      // for(uint8_t i=1;i<8;i++){
-      //   if(Temperature1.data[i]>MaxTemperature.data[1])
-      //   MaxTemperature.data[1] = Temperature3.data[i];
-      // }
 
 			// прочитать все датчики DS18B20
 			for(uint8_t i=1;i<=Dev_Cnt;i++)

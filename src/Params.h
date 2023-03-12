@@ -105,7 +105,7 @@ typedef struct
 {
     uint16_t ID;            	// ID пакета
     uint8_t type;							// Тип параметра
-    uint8_t data[7];					// Данные параметра
+    uint8_t data[8];					// Данные параметра
     uint8_t length;						// Длина данных + 1(type)
     uint16_t timer_ms;        // интервал отправки параметра в ms
     uint32_t current_timer;		// текущее значение таймера 
