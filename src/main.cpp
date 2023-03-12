@@ -121,9 +121,9 @@ void write_flash();
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size){
 	if(huart->Instance == USART3){
 		ReciveUartSize = Size;
-		if(Size > 140 && receiveBuff_huart3[0]== 0x05 && receiveBuff_huart3[1]== 0x05){		// if  header? 
+		if(Size > 130 && receiveBuff_huart3[0]== 0x05 && receiveBuff_huart3[1]== 0x05){		// if  header? 
 			FlagReciveUART3 = 1;
-			// парсинг пакета, еще не реализованно
+			// Переписать в промежуточный буфер, для дальнейшего парсинга
 			for(uint16_t i = 0; i != Size; i++){
 				receiveBuffStat_huart3[i] = receiveBuff_huart3[i];
 			}
@@ -373,7 +373,7 @@ void readEeprom (uint8_t num){
 }
 	
 void Parsing_buff_UART3(void){
-
+  //params.header = receiveBuffStat_huart3[0];
 }
 
 
