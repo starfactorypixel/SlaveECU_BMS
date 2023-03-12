@@ -16,6 +16,9 @@
   *
   ******************************************************************************
   */
+
+#define DEBUG
+
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
@@ -23,6 +26,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "Params.h"
+#include "pixel_CAN.h"
 #include <stdio.h>
 #include <stdlib.h>
 /* USER CODE END Includes */
@@ -34,8 +38,6 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define DEBAG
-
 #define Button1 		HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_8)
 #define Button2 		HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_9)
 #define Button2 		HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_9)
@@ -43,6 +45,11 @@
 #define STBY_L()        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);	// Low
 
 #define MARKER_FIRST_START  100           // Маркер что flash не пустая
+
+// BMS_PACKET_SIZE - размер структуры params_t (140 байт на текущий момент)
+// 60 - просто запас... на самом деле не особо нужен, наверное
+// изначально размер буфера был 200 байт, оттуда запас 60 и вылез
+#define UART3_BUFF_SIZE (BMS_PACKET_SIZE+60)
 
 /* USER CODE END PD */
 
@@ -69,9 +76,9 @@ UART_HandleTypeDef huart3;
 	uint8_t TxData[8] = {0,};
 	uint8_t RxData[8] = {0,};
 	uint32_t TxMailbox = 0;
-	uint8_t trans_str[30];
+	//uint8_t trans_str[30];  // used nowhere
 	
-	_params_v params_obj;
+	//_params_v params_obj; // used nowhere
 	
 	
 	//------------------------  Ds18b20
@@ -83,12 +90,12 @@ UART_HandleTypeDef huart3;
 	uint8_t ADC_cnt_state = 0;
 	uint16_t ADC_cnt = 0;
 	uint16_t ADC_senors[10];
-	//------------------------  Timer	
+	//------------------------ Timer	
 	
 	//------------------------ UART	
-	uint8_t receiveBuff_huart3[200];
-	uint8_t receiveBuffStat_huart3[200];
-	uint16_t ReciveUartSize = 0;
+	uint8_t receiveBuff_huart3[UART3_BUFF_SIZE];
+	uint8_t receiveBuffStat_huart3[UART3_BUFF_SIZE];
+	//uint16_t ReciveUartSize = 0;  // used nowhere
 	uint8_t FlagReciveUART3 = 0;
 	//------------------------ FLASH
 	uint16_t write_data16[30];
@@ -117,19 +124,37 @@ void write_flash();
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
 //-------------------------------- Прерывание от USART3 по флагу Idle
+// TODO: АЛЯРМА! Функция предполагает, что в буфере будет пакет целиком, причем первый байт заголовка попадёт
+// в первый байт буфера. Есть ли в этом полная уверенность? Может ли быть такое, что в буфере будет остаток
+// предыдущего пакета и начало следующего?
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size){
-	if(huart->Instance == USART3){
-		ReciveUartSize = Size;
-		if(Size > 130 && receiveBuff_huart3[0]== 0x05 && receiveBuff_huart3[1]== 0x05){		// if  header? 
-			FlagReciveUART3 = 1;
-			// Переписать в промежуточный буфер, для дальнейшего парсинга
-			for(uint16_t i = 0; i != Size; i++){
-				receiveBuffStat_huart3[i] = receiveBuff_huart3[i];
-			}
-		}
-		HAL_UARTEx_ReceiveToIdle_IT(&huart3, (uint8_t*) receiveBuff_huart3, 100);
-	}
+	if(huart->Instance != USART3) return;
+  if (Size < BMS_PACKET_SIZE) return;
+
+  // Check BMS packet header
+  // TODO: уже плохо соображаю... это же будет работтаь?
+  uint32_t* BMS_header = (uint32_t*)receiveBuff_huart3; 
+  if (BMS_header[0] != BMS_PACKET_HEADER) return;
+
+  //ReciveUartSize = Size; // пока не понял, зачем оно нам тут
+
+  // set flag that BMS packet received
+  FlagReciveUART3 = 1;
+
+  // copy data to intermediate buffer
+  // TODO: where we are using intermediate buffer? Does we need it?
+  //memcpy( receiveBuffStat_huart3, receiveBuff_huart3, Size );
+  
+  // fill the BMS structure with data
+  memcpy( &params, receiveBuff_huart3, BMS_PACKET_SIZE );
+
+  // clear buffer
+  // TODO: do we really need clear the buffer?
+  //memset( receiveBuff_huart3, 0, UART3_BUFF_SIZE );
+
+  HAL_UARTEx_ReceiveToIdle_IT(&huart3, (uint8_t*) receiveBuff_huart3, UART3_BUFF_SIZE);
 }
 
 //-------------------------------- Прерывание от таймера TIM1
@@ -157,7 +182,7 @@ void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
 					}
 					else{
 						if(RxData[0] == 0x12){
-							// HighVoltage.timer_ms = ((uint16_t)RxData[1] << 8) | RxData[2];
+							// HighVoltage.period_ms = ((uint16_t)RxData[1] << 8) | RxData[2];
               HighVoltage.state = RxData[1];
               write_flash();
 						}
@@ -222,7 +247,7 @@ void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
       		break;
       }
 
-#ifdef DEBAG
+#ifdef DEBUG
 			sprintf(str1,"CAN %c", RxHeader.StdId);
 			HAL_UART_Transmit(&huart1, (uint8_t*)str1, strlen(str1), 100);	
 #endif
@@ -245,7 +270,7 @@ void HAL_CAN_Send()
 
 		if(HAL_CAN_AddTxMessage(&hcan, &TxHeader, TxData, &TxMailbox) != HAL_OK)
 		{
-#ifdef DEBAG
+#ifdef DEBUG
 			sprintf(str1,"CAN %c", RxHeader.StdId);
 			HAL_UART_Transmit(&huart1, (uint8_t*)"ER SEND\n", 8, 100);
 #endif
@@ -256,9 +281,14 @@ void HAL_CAN_Send_Obj(_params_v *params_obj)
 {
 	TxHeader.StdId = params_obj->ID;
 	TxHeader.DLC = params_obj->length;
-	for(uint8_t i=1;i<8;i++){
+
+  memset(TxData, 0, 8);
+  TxData[0] = params_obj->type;
+
+	for(uint8_t i=1; i<8; i++){
 		TxData[i] = params_obj->data[i];
 	}
+  
 	HAL_CAN_Send();
 }
 
@@ -371,9 +401,125 @@ void readEeprom (uint8_t num){
 	LowVoltageMinMaxDelta.state = read_data16[19];
   MaxTemperature.data[2] = read_data16[20];
 }
-	
-void Parsing_buff_UART3(void){
-  //params.header = receiveBuffStat_huart3[0];
+
+uint16_t get_BMS_min_voltage(params_t* BMS_params){
+  if (BMS_params == nullptr) return UINT16_MAX;
+
+  uint16_t result = UINT16_MAX;
+  //result = (BMS_params->voltage_1 < result) ? BMS_params->voltage_1 : result;
+  result = min(BMS_params->voltage_1, result);
+  result = min(BMS_params->voltage_2, result);
+  result = min(BMS_params->voltage_3, result);
+  result = min(BMS_params->voltage_4, result);
+  result = min(BMS_params->voltage_5, result);
+  result = min(BMS_params->voltage_6, result);
+  result = min(BMS_params->voltage_7, result);
+  result = min(BMS_params->voltage_8, result);
+  result = min(BMS_params->voltage_9, result);
+  result = min(BMS_params->voltage_10, result);
+  result = min(BMS_params->voltage_11, result);
+  result = min(BMS_params->voltage_12, result);
+  result = min(BMS_params->voltage_13, result);
+  result = min(BMS_params->voltage_14, result);
+  result = min(BMS_params->voltage_15, result);
+  result = min(BMS_params->voltage_16, result);
+  result = min(BMS_params->voltage_17, result);
+  result = min(BMS_params->voltage_18, result);
+  result = min(BMS_params->voltage_19, result);
+  result = min(BMS_params->voltage_20, result);
+  result = min(BMS_params->voltage_21, result);
+  result = min(BMS_params->voltage_22, result);
+  result = min(BMS_params->voltage_23, result);
+  result = min(BMS_params->voltage_24, result);
+  return result;
+}
+
+uint16_t get_BMS_max_voltage(params_t* BMS_params){
+  if (BMS_params == nullptr) return 0;
+
+  uint16_t result = 0;
+  //result = (BMS_params->voltage_1 < result) ? BMS_params->voltage_1 : result;
+  result = max(BMS_params->voltage_1, result);
+  result = max(BMS_params->voltage_2, result);
+  result = max(BMS_params->voltage_3, result);
+  result = max(BMS_params->voltage_4, result);
+  result = max(BMS_params->voltage_5, result);
+  result = max(BMS_params->voltage_6, result);
+  result = max(BMS_params->voltage_7, result);
+  result = max(BMS_params->voltage_8, result);
+  result = max(BMS_params->voltage_9, result);
+  result = max(BMS_params->voltage_10, result);
+  result = max(BMS_params->voltage_11, result);
+  result = max(BMS_params->voltage_12, result);
+  result = max(BMS_params->voltage_13, result);
+  result = max(BMS_params->voltage_14, result);
+  result = max(BMS_params->voltage_15, result);
+  result = max(BMS_params->voltage_16, result);
+  result = max(BMS_params->voltage_17, result);
+  result = max(BMS_params->voltage_18, result);
+  result = max(BMS_params->voltage_19, result);
+  result = max(BMS_params->voltage_20, result);
+  result = max(BMS_params->voltage_21, result);
+  result = max(BMS_params->voltage_22, result);
+  result = max(BMS_params->voltage_23, result);
+  result = max(BMS_params->voltage_24, result);
+  return result;
+}
+
+int16_t get_BMS_max_temperature(params_t* BMS_params){
+  if (BMS_params == nullptr) return INT16_MIN;
+
+  int16_t result = INT16_MIN;
+  result = max(BMS_params->temp_mos, result);
+  result = max(BMS_params->temp_bal, result);
+  result = max(BMS_params->temp_1, result);
+  result = max(BMS_params->temp_2, result);
+  result = max(BMS_params->temp_3, result);
+  result = max(BMS_params->temp_4, result);
+  // TODO: other temperature should be checked too
+  return result;
+}
+
+void parse_CAN_registers_from_BMS_data(void){
+  uint8_t data[7];
+  uint32_t uint32_val = 0;
+  
+  // HighVoltage in mV, params.voltage in mV*10
+  uint32_val = params.voltage*10;
+  CAN_register_fill_data( &HighVoltage, sizeof(uint32_t), (uint8_t *) &uint32_val );
+  
+  uint32_val = (uint32_t)params.current;
+  CAN_register_fill_data( &HighCurrent, sizeof(uint32_t), (uint8_t *) &uint32_val );
+
+  // ------------ Cell voltages
+  CAN_register_fill_uint16x3( &LowVoltage1_3, params.voltage_1, params.voltage_2, params.voltage_3 );
+  CAN_register_fill_uint16x3( &LowVoltage4_6, params.voltage_4, params.voltage_5, params.voltage_6 );
+  CAN_register_fill_uint16x3( &LowVoltage7_9, params.voltage_7, params.voltage_8, params.voltage_9 );
+  CAN_register_fill_uint16x3( &LowVoltage10_12, params.voltage_10, params.voltage_11, params.voltage_12 );
+  CAN_register_fill_uint16x3( &LowVoltage13_15, params.voltage_13, params.voltage_14, params.voltage_15 );
+  CAN_register_fill_uint16x3( &LowVoltage16_18, params.voltage_16, params.voltage_17, params.voltage_18 );
+  CAN_register_fill_uint16x3( &LowVoltage19_21, params.voltage_19, params.voltage_20, params.voltage_21 );
+  CAN_register_fill_uint16x3( &LowVoltage22_24, params.voltage_22, params.voltage_23, params.voltage_24 );
+
+  // ------------- LowVoltageMinMaxDelta
+  uint16_t min_voltage = get_BMS_min_voltage( &params );
+  uint16_t max_voltage = get_BMS_max_voltage( &params );
+  CAN_register_fill_uint16x3( &LowVoltageMinMaxDelta, min_voltage, max_voltage, max_voltage-min_voltage );
+
+  // ------------- Temperature1: MOS, Balancer, Temp1, Temp2, Temp3, Temp4, Temp5
+  memset( data, 0, 7 );
+  data[0] = (params.temp_mos & 0xFF);
+  data[1] = (params.temp_bal & 0xFF);
+  data[2] = (params.temp_1 & 0xFF);
+  data[3] = (params.temp_1 & 0xFF);
+  data[4] = (params.temp_1 & 0xFF);
+  data[5] = (params.temp_1 & 0xFF);
+  data[6] = 0;  // TODO: here should be additional temperature
+  CAN_register_fill_data( &Temperature1, sizeof(uint8_t)*7, data );
+
+  // ------------- MaxTemperature
+  uint8_t max_temperature = (get_BMS_max_temperature( &params ) & 0xFF);
+  CAN_register_fill_data( &MaxTemperature, sizeof(uint8_t), &max_temperature );
 }
 
 
@@ -423,7 +569,7 @@ int main(void)
 	
 	// установить начальные параметры по умолчанию (для отладки)
 	HighVoltage.state = 0x01;				// Статус действия = отравка по таймеру
-	HighVoltage.timer_ms = 1000;		// Период отправки сообшений в ms.
+	HighVoltage.period_ms = 1000;		// Период отправки сообшений в ms.
 	HighVoltage.length = 5;					// Длина данных + 1 байт type
 	HighVoltage.data[0] = 0x61;			// Тип сообшения 0x61 - событие по таймеру, актуальное "нормальное" значение. Взято из таблицы.
 	// 0x000124F8 = 75000 mV
@@ -433,7 +579,7 @@ int main(void)
 	HighVoltage.data[4] = 0xF8;
 	
 	HighCurrent.state = 0x01;				
-	HighCurrent.timer_ms = 1000;		
+	HighCurrent.period_ms = 1000;		
 	HighCurrent.length = 5;					
 	HighCurrent.data[0] = 0x61;			
 	// 0x00001388 =  5000 mA
@@ -443,7 +589,7 @@ int main(void)
 	HighCurrent.data[4] = 0x88;
 	
 	MaxTemperature.state = 0x01;				
-	MaxTemperature.timer_ms = 5000;	
+	MaxTemperature.period_ms = 5000;	
 	MaxTemperature.length = 3;			
 	MaxTemperature.data[0] = 0x61;	
 	// 0x19 =  25
@@ -459,8 +605,13 @@ int main(void)
 		Заполняем структуру отвечающую за отправку кадров
 		StdId — это идентификатор стандартного кадра.
 		ExtId — это идентификатор расширенного кадра. Мы будем отправлять стандартный поэтому сюда пишем 0.
-		RTR = CAN_RTR_DATA — это говорит о том, что мы отправляем кадр с данными (Data Frame). Если указать CAN_RTR_REMOTE, тогда это будет Remote Frame.
-		IDE = CAN_ID_STD — это говорит о том, что мы отправляем стандартный кадр. Если указать CAN_ID_EXT, тогда это будет расширенный кадр. В StdId нужно будет указать 0, а в ExtId записать расширенный идентификатор.
+		RTR = 
+        CAN_RTR_DATA    — отправляем кадр с данными (Data Frame)
+        CAN_RTR_REMOTE  — отправляем Remote Frame.
+		IDE =
+        CAN_ID_STD — отправляем стандартный кадр.
+        CAN_ID_EXT — расширенный кадр. В этом случае в StdId нужно будет указать 0,
+                     а в ExtId записать расширенный идентификатор.
 		DLC = 8 — количество полезных байт передаваемых в кадре (от 1 до 8).
 		TransmitGlobalTime — относится к Time Triggered Communication Mode, мы это не используем поэтому пишем 0.
 	*/
@@ -474,8 +625,9 @@ int main(void)
 	/* активируем события которые будут вызывать прерывания  */
 	HAL_CAN_ActivateNotification(&hcan, CAN_IT_RX_FIFO1_MSG_PENDING | CAN_IT_ERROR | CAN_IT_BUSOFF | CAN_IT_LAST_ERROR_CODE);
 	HAL_CAN_Start(&hcan);
+
 	/* активируем прерывания USART3*/
-	HAL_UARTEx_ReceiveToIdle_IT(&huart3, (uint8_t*) receiveBuff_huart3, 100);
+  HAL_UARTEx_ReceiveToIdle_IT(&huart3, (uint8_t*) receiveBuff_huart3, UART3_BUFF_SIZE);
 	STBY_L();				// MCP2562 STBY mode = normal
 	
 // опросить датчики ds18b20
@@ -506,9 +658,9 @@ int main(void)
 	HAL_ADC_Start_DMA(&hadc1, (uint32_t*)ADC_value, 10);			
 
 	// записать значения таймера
-	HighVoltage.current_timer = HAL_GetTick();
-	HighCurrent.current_timer = HAL_GetTick();
-	MaxTemperature.current_timer = HAL_GetTick();
+  CAN_register_update_timer( &HighVoltage );
+  CAN_register_update_timer( &HighCurrent );
+  CAN_register_update_timer( &MaxTemperature );
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -517,20 +669,20 @@ int main(void)
   while (1)
   {
     if(FlagReciveUART3 == 1){
-      Parsing_buff_UART3();
+      parse_CAN_registers_from_BMS_data();
     }
 
-		if((HAL_GetTick() - HighVoltage.current_timer) > HighVoltage.timer_ms && HighVoltage.state == 0x01){
+		if((HAL_GetTick() - HighVoltage.current_timer) > HighVoltage.period_ms && HighVoltage.state == 0x01){
 			HighVoltage.current_timer = HAL_GetTick();
 			TxData[0] = 0x61;				// Тип сообшения 0x61 - событие по таймеру, актуальное "нормальное" значение.
 			HAL_CAN_Send_Obj(&HighVoltage);
 		}
-		if((HAL_GetTick() - HighCurrent.current_timer) > HighCurrent.timer_ms && HighCurrent.state == 0x01) {
+		if((HAL_GetTick() - HighCurrent.current_timer) > HighCurrent.period_ms && HighCurrent.state == 0x01) {
 			HighCurrent.current_timer = HAL_GetTick();
 			TxData[0] = 0x61;				
 			HAL_CAN_Send_Obj(&HighCurrent);
 		}
-		if((HAL_GetTick() - MaxTemperature.current_timer) > MaxTemperature.timer_ms && MaxTemperature.state == 0x01){
+		if((HAL_GetTick() - MaxTemperature.current_timer) > MaxTemperature.period_ms && MaxTemperature.state == 0x01){
 			MaxTemperature.current_timer = HAL_GetTick();
 			MaxTemperature.data[1]=0;
 			readADC(); // прочитать все каналы ADC
