@@ -26,7 +26,6 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "Params.h"
-#include "pixel_CAN.h"
 #include <stdio.h>
 #include <stdlib.h>
 /* USER CODE END Includes */
@@ -670,6 +669,7 @@ int main(void)
   {
     if(FlagReciveUART3 == 1){
       parse_CAN_registers_from_BMS_data();
+      FlagReciveUART3 = 0;
     }
 
 		if((HAL_GetTick() - HighVoltage.current_timer) > HighVoltage.period_ms && HighVoltage.state == 0x01){
