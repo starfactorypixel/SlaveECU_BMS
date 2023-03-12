@@ -123,14 +123,10 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size){
 		ReciveUartSize = Size;
 		if(Size > 140 && receiveBuff_huart3[0]== 0x05 && receiveBuff_huart3[1]== 0x05){		// if  header? 
 			FlagReciveUART3 = 1;
-			
 			// парсинг пакета, еще не реализованно
 			for(uint16_t i = 0; i != Size; i++){
 				receiveBuffStat_huart3[i] = receiveBuff_huart3[i];
 			}
-			
-			
-			
 		}
 		HAL_UARTEx_ReceiveToIdle_IT(&huart3, (uint8_t*) receiveBuff_huart3, 100);
 	}
@@ -376,6 +372,11 @@ void readEeprom (uint8_t num){
   MaxTemperature.data[2] = read_data16[20];
 }
 	
+void Parsing_buff_UART3(void){
+
+}
+
+
 /* USER CODE END 0 */
 
 /**
@@ -515,6 +516,10 @@ int main(void)
 	
   while (1)
   {
+    if(FlagReciveUART3 == 1){
+      Parsing_buff_UART3();
+    }
+
 		if((HAL_GetTick() - HighVoltage.current_timer) > HighVoltage.timer_ms && HighVoltage.state == 0x01){
 			HighVoltage.current_timer = HAL_GetTick();
 			TxData[0] = 0x61;				// Тип сообшения 0x61 - событие по таймеру, актуальное "нормальное" значение.
@@ -566,7 +571,10 @@ int main(void)
 
 			HAL_CAN_Send_Obj(&MaxTemperature);
 		}
+
 		
+
+
 		if(Button1 == 0){
 			TxHeader.StdId = 0x07B0;
 			TxHeader.DLC = 8;
