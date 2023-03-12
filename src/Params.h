@@ -73,7 +73,7 @@ struct params_t
 			uint16_t voltage_31;        // Напряжение на 31 ячейке, мВ.
 			uint16_t voltage_32;        // Напряжение на 32 ячейке, мВ.
 			uint16_t reserved_70;		// 
-			int16_t current;            // Ток разряда иди заряда, мА.
+			int16_t current;            // Ток разряда или заряда, мА.
 			uint8_t percent;            // Оставшаяся ёмкость АКБ, проценты.
 			uint32_t phy_capacity;      // Фактическая ёмкость АКБ, мА/ч.
 			uint32_t rem_capacity;      // Оставшаяся ёмкость АКБ, мА/ч.
