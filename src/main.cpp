@@ -91,8 +91,8 @@ UART_HandleTypeDef huart3;
 	uint16_t ReciveUartSize = 0;
 	uint8_t FlagReciveUART3 = 0;
 	//------------------------ FLASH
-	uint16_t write_data16[20];
-	uint16_t read_data16[20];
+	uint16_t write_data16[30];
+	uint16_t read_data16[30];
 	
 	
 	
@@ -124,7 +124,7 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size){
 		if(Size > 140 && receiveBuff_huart3[0]== 0x05 && receiveBuff_huart3[1]== 0x05){		// if  header? 
 			FlagReciveUART3 = 1;
 			
-			// парсинг пакета
+			// парсинг пакета, еще не реализованно
 			for(uint16_t i = 0; i != Size; i++){
 				receiveBuffStat_huart3[i] = receiveBuff_huart3[i];
 			}
@@ -154,67 +154,71 @@ void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
 			
 			switch (sw)
       {
-      	case 0x07B0:
-					if(RxData[6] == 0x31){
-						HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
-					}
-					if(RxData[6] == 0x32){
-						HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
-					}
-      		break;
-      	case 0x0044:
+      	case HighVoltage_ID:
 					if(RxData[0] == 0x11){		// Если пришел запрос, то нужно отвечать
 						TxData[0] = 0x51;				// Тип сообшения 0x51 - ответ на запрос, актуальное "нормальное" значение.
 						HAL_CAN_Send_Obj(&HighVoltage);
 					}
 					else{
 						if(RxData[0] == 0x12){
-							HighVoltage.timer_ms = ((uint16_t)RxData[1] << 8) | RxData[2];
-							write_flash();
+							// HighVoltage.timer_ms = ((uint16_t)RxData[1] << 8) | RxData[2];
+              HighVoltage.state = RxData[1];
+              write_flash();
 						}
 					}
       		break;
-      	case 0x0045:
+      	case HighCurrent_ID:
 					if(RxData[0] == 0x11){		
 						TxData[0] = 0x51;				
 						HAL_CAN_Send_Obj(&HighCurrent);
 					}
 					else{
 						if(RxData[0] == 0x12){
-							HighCurrent.timer_ms = ((uint16_t)RxData[1] << 8) | RxData[2];
-							write_flash();
+							HighCurrent.state = RxData[1];
+              write_flash();
 						}
 					}
           break;
-      	case 0x0046:
+      	case MaxTemperature_ID:
 					if(RxData[0] == 0x11){		
 						TxData[0] = 0x51;				
 						HAL_CAN_Send_Obj(&MaxTemperature);
 					}
 					else{
 						if(RxData[0] == 0x12){
-							MaxTemperature.timer_ms = ((uint16_t)RxData[1] << 8) | RxData[2];
-							write_flash();
+							MaxTemperature.state = RxData[1];
+              write_flash();
 						}
 					}
           break;
-      	case 0x0047:
+      	case Temperature1_ID:
 					if(RxData[0] == 0x11){		
 						TxData[0] = 0x51;				
 						HAL_CAN_Send_Obj(&Temperature1);
 					}
           break;
-      	case 0x0048:
+      	case Temperature2_ID:
 					if(RxData[0] == 0x11){		
 						TxData[0] = 0x51;				
 						HAL_CAN_Send_Obj(&Temperature2);
 					}
           break;
-      	case 0x0049:
+      	case Temperature3_ID:
 					if(RxData[0] == 0x11){		
 						TxData[0] = 0x51;				
 
 						HAL_CAN_Send_Obj(&Temperature3);
+					}
+      		break;
+      	case 0x07B0:    // для отладки, поморгать светодиодами
+					if(RxData[6] == 0x31){
+						HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
+					}
+					if(RxData[6] == 0x32){
+						HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
+					}
+					if(RxData[6] == 0x33){
+						Erase_flash(21);
 					}
       		break;
       	default:
@@ -275,23 +279,41 @@ void readADC(void){
 	}
 	for(uint8_t i=1;i<8;i++){
 		Temperature1.data[i] = ADC_senors[i-1]/256;
+    if(Temperature1.data[i]>MaxTemperature.data[1])
+      MaxTemperature.data[1] = Temperature1.data[i];
 	}
 	for(uint8_t i=1;i<4;i++){
 		Temperature2.data[i] = ADC_senors[i+6]/256;
+    if(Temperature2.data[i]>MaxTemperature.data[1])
+      MaxTemperature.data[1] = Temperature2.data[i];
 	}
 }
 
 void write_flash(){
 	write_data16[0] = MARKER_FIRST_START;
-	write_data16[1] = HighVoltage.timer_ms;
-	write_data16[2] = HighVoltage.state;
-	write_data16[3] = HighCurrent.timer_ms;
-	write_data16[4] = HighCurrent.state;
-	write_data16[5] = MaxTemperature.timer_ms;
-	write_data16[6] = MaxTemperature.state;
-	
-	Erase_flash(7);
-	Write_flash_16b(7);
+	write_data16[1] = BlockInfo.state;
+	write_data16[2] = BlockHealth.state;
+	write_data16[3] = BlockCfg.state;
+	write_data16[4] = BlockError.state;
+	write_data16[5] = HighVoltage.state;
+	write_data16[6] = HighCurrent.state;
+  write_data16[7] = MaxTemperature.state;
+	write_data16[8] = Temperature1.state;
+	write_data16[9] = Temperature2.state;
+	write_data16[10] = Temperature3.state;
+	write_data16[11] = LowVoltage1_3.state;
+	write_data16[12] = LowVoltage4_6.state;
+	write_data16[13] = LowVoltage7_9.state;
+	write_data16[14] = LowVoltage10_12.state;
+	write_data16[15] = LowVoltage13_15.state;
+	write_data16[16] = LowVoltage16_18.state;
+	write_data16[17] = LowVoltage19_21.state;
+	write_data16[18] = LowVoltage22_24.state;
+	write_data16[19] = LowVoltageMinMaxDelta.state;
+  write_data16[20] = MaxTemperature.data[2];
+
+	Erase_flash(21);
+	Write_flash_16b(21);
 }
 
 
@@ -302,23 +324,51 @@ void readEeprom (uint8_t num){
 	// Обработка ситуации чистой EEPROM памяти
 	// Если в flash нет данных, то заполнить и устанавливить маркер, указывающий, EEPROM инициализировано
 	if(read_data16[0] != MARKER_FIRST_START){
-		HighVoltage.timer_ms = 1000;
-		HighVoltage.state = 0x01;				// Статус действия = отравка по таймеру
-		HighCurrent.timer_ms = 1000;
-		HighCurrent.state = 0x01;				
-		MaxTemperature.timer_ms = 5000;
-		MaxTemperature.state = 0x01;		
+	BlockInfo.state = 0x00;	
+	BlockHealth.state = 0x00;
+	BlockCfg.state = 0x00;
+  BlockError.state = 0x00;
+  HighVoltage.state = 0x01;     //  отравка по таймеру
+	HighCurrent.state = 0x01;
+	MaxTemperature.state = 0x01;
+	Temperature1.state = 0x01;
+	Temperature2.state = 0x01;
+	Temperature3.state = 0x01;
+  LowVoltage1_3.state = 0x00;
+	LowVoltage4_6.state = 0x00;
+	LowVoltage7_9.state = 0x00;
+	LowVoltage10_12.state = 0x00;
+	LowVoltage13_15.state = 0x00;
+	LowVoltage16_18.state = 0x00;
+  LowVoltage19_21.state = 0x00;
+	LowVoltage22_24.state = 0x00;
+	LowVoltageMinMaxDelta.state = 0x00;
+  MaxTemperature.data[2] = ThresholdTemperature1;   // пороговое значение предельной температуры
+
 		write_flash();
 	}
 	
 	Read_flash_16b(num);
-	HighVoltage.timer_ms = read_data16[1];
-	HighVoltage.state = read_data16[2];
-	HighCurrent.timer_ms = read_data16[3];
-	HighCurrent.state = read_data16[4];
-	MaxTemperature.timer_ms = read_data16[5];
-	MaxTemperature.state = read_data16[6];
-	
+	BlockInfo.state = read_data16[1];
+	BlockHealth.state = read_data16[2];
+	BlockCfg.state = read_data16[3];
+  BlockError.state = read_data16[4];
+  HighVoltage.state = read_data16[5];
+	HighCurrent.state = read_data16[6];
+	MaxTemperature.state = read_data16[7];
+	Temperature1.state = read_data16[8];
+	Temperature2.state = read_data16[9];
+	Temperature3.state = read_data16[10];
+  LowVoltage1_3.state = read_data16[11];
+	LowVoltage4_6.state = read_data16[12];
+	LowVoltage7_9.state = read_data16[13];
+	LowVoltage10_12.state = read_data16[14];
+	LowVoltage13_15.state = read_data16[15];
+	LowVoltage16_18.state = read_data16[16];
+  LowVoltage19_21.state = read_data16[17];
+	LowVoltage22_24.state = read_data16[18];
+	LowVoltageMinMaxDelta.state = read_data16[19];
+  MaxTemperature.data[2] = read_data16[20];
 }
 	
 
@@ -368,7 +418,7 @@ int main(void)
 	
 	HAL_TIM_Base_Start_IT(&htim1);
 	
-	// установить начальные параметры по умолчанию
+	// установить начальные параметры по умолчанию (для отладки)
 	HighVoltage.state = 0x01;				// Статус действия = отравка по таймеру
 	HighVoltage.timer_ms = 1000;		// Период отправки сообшений в ms.
 	HighVoltage.length = 5;					// Длина данных + 1 байт type
@@ -393,14 +443,14 @@ int main(void)
 	MaxTemperature.timer_ms = 5000;	
 	MaxTemperature.length = 3;			
 	MaxTemperature.data[0] = 0x61;	
-	// 0x0019 =  25
-	MaxTemperature.data[1] = 0x00;
-	MaxTemperature.data[2] = 0x19;
+	// 0x19 =  25
+	MaxTemperature.data[1] = 0x19;
+  MaxTemperature.data[2] = ThresholdTemperature1;   // пороговое значение предельной температуры
 
 	Temperature1.length = 8;			
 	Temperature2.length = 8;		
   // прочитать сохраненные параметры из Flash
-	readEeprom(7);
+	readEeprom(21);
 	
 	/* 
 		Заполняем структуру отвечающую за отправку кадров
@@ -475,9 +525,14 @@ int main(void)
 		}
 		if((HAL_GetTick() - MaxTemperature.current_timer) > MaxTemperature.timer_ms && MaxTemperature.state == 0x01){
 			MaxTemperature.current_timer = HAL_GetTick();
-			
+			MaxTemperature.data[1]=0;
 			readADC(); // прочитать все каналы ADC
 		
+      // for(uint8_t i=1;i<8;i++){
+      //   if(Temperature1.data[i]>MaxTemperature.data[1])
+      //   MaxTemperature.data[1] = Temperature3.data[i];
+      // }
+
 			// прочитать все датчики DS18B20
 			for(uint8_t i=1;i<=Dev_Cnt;i++)
 			{
@@ -500,7 +555,18 @@ int main(void)
 			}
 			Temperature3.length = Dev_Cnt+1;
 			
-			TxData[0] = 0x61;				
+      // Вычислить максимальную температуру, и критическую c датчиков ds18b20
+      for(uint8_t i=1;i<Dev_Cnt+1;i++){
+        if(Temperature3.data[i]>MaxTemperature.data[1])
+        MaxTemperature.data[1] = Temperature3.data[i];
+      }
+       if(MaxTemperature.data[1]>MaxTemperature.data[2]){   // если температура больше чем пороговое значение
+        TxData[0] = 0x63;			// Тип сообшения 0x63 - событие по таймеру, актуальное "критическое" значение
+      }
+      else{
+        TxData[0] = 0x61;			// Тип сообшения 0x61 - событие по таймеру, актуальное "нормальное" значение.
+      }
+
 			HAL_CAN_Send_Obj(&MaxTemperature);
 		}
 		
