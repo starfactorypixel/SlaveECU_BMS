@@ -15,6 +15,9 @@
 #define PC_MT_GET_VALUE_REQUEST   0x11
 #define PC_MT_GET_VALUE_RESP_OK   0x51
 #define PC_MT_GET_VALUE_RESP_ERR  0xD1
+#define PC_MT_TIMER_NORMAL        0x61
+#define PC_MT_TIMER_WARNING       0x62
+#define PC_MT_TIMER_CRITICAL      0x63
 /*
 // TODO: will do it later
 enum pix_can_get_value : uint8_t
@@ -64,13 +67,18 @@ void CAN_register_update_timer(_params_v* CAN_register){
 
 
 // Initialization of the CAN register
-void CAN_register_init(_params_v* CAN_register, uint16_t reg_ID, uint8_t reg_type, uint16_t reg_period_ms){
+void CAN_register_init(_params_v* CAN_register, uint16_t reg_ID, uint8_t reg_type, uint16_t reg_period_ms, uint8_t reg_state){
     if(CAN_register == nullptr) return;
 
     CAN_register->ID = reg_ID;
     CAN_register->type = reg_type;
     CAN_register->period_ms = reg_period_ms;
+    CAN_register->state = reg_state;
     CAN_register_update_timer(CAN_register);
+
+    // стоит очищать, чтобы мусор от старых значений не делал нам мозг, если где-то ошибёмся с размером данных
+    memset( (CAN_register->data), 0, 8 );
+    CAN_register->data[0] = CAN_register->type;
 }
 
 

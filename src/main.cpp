@@ -567,32 +567,27 @@ int main(void)
 	HAL_TIM_Base_Start_IT(&htim1);
 	
 	// установить начальные параметры по умолчанию (для отладки)
-	HighVoltage.state = 0x01;				// Статус действия = отравка по таймеру
-	HighVoltage.period_ms = 1000;		// Период отправки сообшений в ms.
+  CAN_register_init( &HighVoltage, HighVoltage_ID, PC_MT_TIMER_NORMAL, 1000, 0x01);    // Статус действия 0x01 = отравка по таймеру
 	HighVoltage.length = 5;					// Длина данных + 1 байт type
-	HighVoltage.data[0] = 0x61;			// Тип сообшения 0x61 - событие по таймеру, актуальное "нормальное" значение. Взято из таблицы.
 	// 0x000124F8 = 75000 mV
 	HighVoltage.data[1] = 0x00;
 	HighVoltage.data[2] = 0x01;
 	HighVoltage.data[3] = 0x24;
 	HighVoltage.data[4] = 0xF8;
 	
-	HighCurrent.state = 0x01;				
-	HighCurrent.period_ms = 1000;		
+  CAN_register_init( &HighCurrent, HighCurrent_ID, PC_MT_TIMER_NORMAL, 1000, 0x01);
 	HighCurrent.length = 5;					
-	HighCurrent.data[0] = 0x61;			
 	// 0x00001388 =  5000 mA
 	HighCurrent.data[1] = 0x00;
 	HighCurrent.data[2] = 0x00;
 	HighCurrent.data[3] = 0x13;
 	HighCurrent.data[4] = 0x88;
 	
-	MaxTemperature.state = 0x01;				
-	MaxTemperature.period_ms = 5000;	
+  CAN_register_init( &MaxTemperature, MaxTemperature_ID, PC_MT_TIMER_NORMAL, 5000, 0x01);
 	MaxTemperature.length = 3;			
-	MaxTemperature.data[0] = 0x61;	
 	// 0x19 =  25
 	MaxTemperature.data[1] = 0x19;
+  // TODO: вроде как в таблице никаких пороговых значений температуры нет...
   MaxTemperature.data[2] = ThresholdTemperature1;   // пороговое значение предельной температуры
 
 	Temperature1.length = 8;			
