@@ -125,33 +125,27 @@ void write_flash();
 /* USER CODE BEGIN 0 */
 
 //-------------------------------- Прерывание от USART3 по флагу Idle
-// TODO: АЛЯРМА! Функция предполагает, что в буфере будет пакет целиком, причем первый байт заголовка попадёт
-// в первый байт буфера. Есть ли в этом полная уверенность? Может ли быть такое, что в буфере будет остаток
-// предыдущего пакета и начало следующего?
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size){
 	if(huart->Instance != USART3) return;
-  if (Size < BMS_PACKET_SIZE) return;
 
   // Check BMS packet header
-  // TODO: уже плохо соображаю... это же будет работтаь?
   uint32_t* BMS_header = (uint32_t*)receiveBuff_huart3; 
-  if (BMS_header[0] != BMS_PACKET_HEADER) return;
+  if (*BMS_header == BMS_PACKET_HEADER && Size >= BMS_PACKET_SIZE) {
+    //ReciveUartSize = Size; // пока не понял, зачем оно нам тут
 
-  //ReciveUartSize = Size; // пока не понял, зачем оно нам тут
+    // set flag that BMS packet received
+    FlagReciveUART3 = 1;
+    
+    // fill the BMS structure with data
+    memcpy( &params, receiveBuff_huart3, BMS_PACKET_SIZE );
 
-  // set flag that BMS packet received
-  FlagReciveUART3 = 1;
-
-  // copy data to intermediate buffer
-  // TODO: where we are using intermediate buffer? Does we need it?
-  //memcpy( receiveBuffStat_huart3, receiveBuff_huart3, Size );
-  
-  // fill the BMS structure with data
-  memcpy( &params, receiveBuff_huart3, BMS_PACKET_SIZE );
-
-  // clear buffer
-  // TODO: do we really need clear the buffer?
-  //memset( receiveBuff_huart3, 0, UART3_BUFF_SIZE );
+    // copy data to intermediate buffer
+    // TODO: where we are using intermediate buffer? Does we need it?
+    //memcpy( receiveBuffStat_huart3, receiveBuff_huart3, Size );
+    // clear buffer
+    // TODO: do we really need clear the buffer?
+    //memset( receiveBuff_huart3, 0, UART3_BUFF_SIZE );
+  }
 
   HAL_UARTEx_ReceiveToIdle_IT(&huart3, (uint8_t*) receiveBuff_huart3, UART3_BUFF_SIZE);
 }
