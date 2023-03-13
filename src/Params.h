@@ -1,17 +1,11 @@
 #ifndef PARAMS_H_
 #define PARAMS_H_
 
+#include <assert.h>
 #include "stm32f1xx_hal.h"
 
 #include "pixel_CAN.h"
 #include "pixel_CAN_BMS.h"
-
-// Макрос для сообщений об ошибке на этапе компиляции
-// удобно проверять соответствие фактических размеров структур и выделенных под них буфферов 
-#define CASSERT(predicate, file) _impl_CASSERT_LINE(predicate,__LINE__,file)
-#define _impl_PASTE(a,b) a##b
-#define _impl_CASSERT_LINE(predicate, line, file) \
-    typedef char _impl_PASTE(assertion_failed_##file##_,line)[2*!!(predicate)-1];
 
 // max of two values
 #define max(a,b) \
@@ -110,9 +104,9 @@ struct params_t
 #pragma pack(pop)
 
 // compile time check of the params_t structure size
-// it will raise a compilation error if the BMS_PACKET_SIZE will not equal to the params_t size
-// выдаст ошибку на этапе компиляции, если размер структуры не будет соответствовать BMS_PACKET_SIZE
-CASSERT( sizeof(params) == BMS_PACKET_SIZE, Params_h );
+// it will raise a compilation error if the BMS_PACKET_SIZE will not equal to the params_t sizesizeof(params) == BMS_PACKET_SIZE
+static_assert(sizeof(params) == BMS_PACKET_SIZE, "BMS_PACKET_SIZE const differs with actual size of params_t structure.");
+
 
 _params_v BlockInfo =       {BlockInfo_ID};
 _params_v BlockHealth =     {BlockHealth_ID};
