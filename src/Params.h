@@ -40,6 +40,7 @@ struct params_t
         {
 			uint32_t header;            // Заголовок пакета.
 			uint16_t voltage;			// Напряжение на всей АКБ, x10 мВ.
+            // TODO: by wosk - 32x uint16_t voltage_x should be changed to uint16_t voltage_cell[32]
 			uint16_t voltage_1;         // Напряжение на 1 ячейке, мВ.
 			uint16_t voltage_2;         // Напряжение на 2 ячейке, мВ.
 			uint16_t voltage_3;         // Напряжение на 3 ячейке, мВ.
