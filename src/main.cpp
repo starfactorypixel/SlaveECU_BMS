@@ -504,9 +504,9 @@ void parse_CAN_registers_from_BMS_data(void){
   data[0] = (params.temp_mos & 0xFF);
   data[1] = (params.temp_bal & 0xFF);
   data[2] = (params.temp_1 & 0xFF);
-  data[3] = (params.temp_1 & 0xFF);
-  data[4] = (params.temp_1 & 0xFF);
-  data[5] = (params.temp_1 & 0xFF);
+  data[3] = (params.temp_2 & 0xFF);
+  data[4] = (params.temp_3 & 0xFF);
+  data[5] = (params.temp_4 & 0xFF);
   data[6] = 0;  // TODO: here should be additional temperature
   CAN_register_fill_data( &Temperature1, sizeof(uint8_t)*7, data );
 
