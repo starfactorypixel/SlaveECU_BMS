@@ -193,7 +193,7 @@ void HAL_CAN_Send(CANFrame *can_frame)
 
   if (can_manager.has_tx_frames_for_transmission())
   {
-    can_manager.fill_tx_frame(TxHeader, TxData);
+    can_manager.give_tx_frame(TxHeader, TxData);
   }
 
   if (can_frame != nullptr)
