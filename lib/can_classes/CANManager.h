@@ -37,9 +37,9 @@ public:
 
     virtual bool has_tx_frames_for_transmission() = 0;
 
-    virtual bool fill_tx_frame(CANFrame &can_frame) = 0;
-    virtual bool fill_tx_frame(can_id_t &id, uint8_t *data, uint8_t &data_length) = 0;
-    virtual bool fill_tx_frame(CAN_TxHeaderTypeDef &header, uint8_t aData[]) = 0;
+    virtual bool give_tx_frame(CANFrame &can_frame) = 0;
+    virtual bool give_tx_frame(can_id_t &id, uint8_t *data, uint8_t &data_length) = 0;
+    virtual bool give_tx_frame(CAN_TxHeaderTypeDef &header, uint8_t aData[]) = 0;
 
     virtual uint8_t get_can_objects_count() = 0;
     virtual bool has_can_objects() = 0;
@@ -77,9 +77,9 @@ public:
 
     bool has_tx_frames_for_transmission() override;
 
-    bool fill_tx_frame(CANFrame &can_frame) override;
-    bool fill_tx_frame(can_id_t &id, uint8_t *data, uint8_t &data_length) override;
-    bool fill_tx_frame(CAN_TxHeaderTypeDef &header, uint8_t aData[]) override;
+    bool give_tx_frame(CANFrame &can_frame) override;
+    bool give_tx_frame(can_id_t &id, uint8_t *data, uint8_t &data_length) override;
+    bool give_tx_frame(CAN_TxHeaderTypeDef &header, uint8_t aData[]) override;
 
     uint8_t get_can_objects_count() override;
     bool has_can_objects() override;

@@ -73,14 +73,6 @@ bool CANManager::process()
             co->fill_can_frame(new_can_frame, CAN_FT_NONE);
             _tx_can_frame.set_frame(new_can_frame); // TODO: HERE!
         }
-        /*
-        if (get_can_object_by_index(i)->has_data_to_send())
-        {
-            PixelCANFrame new_can_frame;
-            get_can_object_by_index(i)->fill_can_frame(new_can_frame, CAN_FT_NONE);
-            fill_tx_frame( new_can_frame );
-        }
-        */
     }
 
     return result;
@@ -133,8 +125,9 @@ bool CANManager::has_tx_frames_for_transmission()
     return _tx_can_frame.is_initialized();
 }
 
-bool CANManager::fill_tx_frame(CANFrame &can_frame)
+bool CANManager::give_tx_frame(CANFrame &can_frame)
 {
+    LOG("give_tx_frame(&can_frame)");
     can_frame.set_frame(_tx_can_frame);
     can_frame.print("[CAN Manager] new TX frame: ");
 
@@ -143,9 +136,9 @@ bool CANManager::fill_tx_frame(CANFrame &can_frame)
     return false;
 }
 
-bool CANManager::fill_tx_frame(can_id_t &id, uint8_t *data, uint8_t &data_length)
+bool CANManager::give_tx_frame(can_id_t &id, uint8_t *data, uint8_t &data_length)
 {
-    LOG("fill_tx_frame(&id, *data, &data_length)");
+    LOG("give_tx_frame(&id, *data, &data_length)");
     id = _tx_can_frame.get_id();
     data_length = _tx_can_frame.get_data_length();
     memcpy(data, _tx_can_frame.get_data_pointer(), data_length);
@@ -155,11 +148,11 @@ bool CANManager::fill_tx_frame(can_id_t &id, uint8_t *data, uint8_t &data_length
     return false;
 }
 
-bool CANManager::fill_tx_frame(CAN_TxHeaderTypeDef &header, uint8_t aData[])
+bool CANManager::give_tx_frame(CAN_TxHeaderTypeDef &header, uint8_t aData[])
 {
     // TODO: Hardware dependent! Should process standard or extended frames.
     // Probably this behaviour should be placed outside the class. Or we need to implement it here.
-    LOG("fill_tx_frame(*pHeader, aData[])");
+    LOG("give_tx_frame(*pHeader, aData[])");
     header.DLC = _tx_can_frame.get_data_length();
     header.StdId = _tx_can_frame.get_id();
     _tx_can_frame.copy_frame_data_to(aData, 8);
