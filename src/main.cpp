@@ -527,6 +527,8 @@ int main(void)
       can_frame.clear_frame();
     }
 
+    last_tick = HAL_GetTick();
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
