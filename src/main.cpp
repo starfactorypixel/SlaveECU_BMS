@@ -469,7 +469,8 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
-  uint32_t last_tick = HAL_GetTick();
+  uint32_t last_tick1 = HAL_GetTick();
+  uint32_t last_tick2 = HAL_GetTick();
   CANFrame can_frame;
   uint8_t can_frame_data[8];
   while (1)
@@ -481,20 +482,22 @@ int main(void)
     }
 
     // CAN Manager checks data every 300 ms
-    if (HAL_GetTick() - last_tick > 300)
+    if (HAL_GetTick() - last_tick1 > 300)
     {
       can_manager.process();
       if (can_manager.has_tx_frames_for_transmission())
         HAL_CAN_Send();
 
+      last_tick1 = HAL_GetTick();
     }
 
     // Perform ADC reading with 1 sec period
-    if (HAL_GetTick() - last_tick > 1000)
+    if (HAL_GetTick() - last_tick2 > 1000)
     {
       readADC(); // read 10 ADC channels
       read_ds18b20(); // read all DS18B20 temperature sensors
       convert_bms_data_from_uart_to_can_structure(bms_packet_data, bms_can_data);
+      last_tick2 = HAL_GetTick();
     }
 
     if (Button1 == 0)
@@ -526,8 +529,6 @@ int main(void)
       HAL_CAN_Send(&can_frame);
       can_frame.clear_frame();
     }
-
-    last_tick = HAL_GetTick();
 
     /* USER CODE END WHILE */
 
