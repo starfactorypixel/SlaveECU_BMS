@@ -278,7 +278,7 @@ void read_ds18b20()
     // temp_5_19[i] for i=0..9 is reserved for 10 ADC values
     if (i+9 < 15)
     {
-      bms_can_data.other_temperature.temp_5_19[i] = ((raw_temper & 0x07FF) >> 4);
+      bms_can_data.other_temperature.temp_5_19[i+9] = ((raw_temper & 0x07FF) >> 4);
     }
   }
 
