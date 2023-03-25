@@ -1,5 +1,10 @@
 #ifndef DS18B20_H_
 #define DS18B20_H_
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 //--------------------------------------------------
 #include "stm32f1xx_hal.h"
 #include <string.h>
@@ -26,7 +31,12 @@ void port_init(void);
 uint8_t ds18b20_init(uint8_t mode);
 void ds18b20_MeasureTemperCmd(uint8_t mode, uint8_t DevNum);
 void ds18b20_ReadStratcpad(uint8_t mode, uint8_t *Data, uint8_t DevNum);
-uint8_t ds18b20_GetSign(uint16_t dt);
+bool ds18b20_GetSign(uint16_t dt);
 float ds18b20_Convert(uint16_t dt);
 //--------------------------------------------------
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif /* DS18B20_H_ */

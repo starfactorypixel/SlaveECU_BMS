@@ -276,11 +276,10 @@ void ds18b20_ReadStratcpad(uint8_t mode, uint8_t *Data, uint8_t DevNum)
   }
 }
 //----------------------------------------------------------
-uint8_t ds18b20_GetSign(uint16_t dt)
+bool ds18b20_GetSign(uint16_t dt)
 {
   //Проверим 11-й бит
-  if (dt&(1<<11)) return 1;
-  else return 0;
+  return (dt&(1<<11));
 }
 //----------------------------------------------------------
 float ds18b20_Convert(uint16_t dt)
