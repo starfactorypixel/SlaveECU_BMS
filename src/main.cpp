@@ -191,16 +191,15 @@ void HAL_CAN_Send(CANFrame *can_frame)
   while (HAL_CAN_GetTxMailboxesFreeLevel(&hcan) == 0)
     ;
 
-  if (can_manager.has_tx_frames_for_transmission())
-  {
-    can_manager.give_tx_frame(TxHeader, TxData);
-  }
-
   if (can_frame != nullptr)
   {
     TxHeader.StdId = can_frame->get_id();
     TxHeader.DLC = can_frame->get_data_length();
     can_frame->copy_frame_data_to(TxData, 8);
+  }
+  else if (can_manager.has_tx_frames_for_transmission())
+  {
+    can_manager.give_tx_frame(TxHeader, TxData);
   }
 
   if (TxHeader.StdId != UINT32_MAX)
