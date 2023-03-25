@@ -36,7 +36,6 @@
 /* USER CODE BEGIN PD */
 #define Button1 HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_8)
 #define Button2 HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_9)
-#define Button2 HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_9)
 #define STBY_H() HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);   // High
 #define STBY_L() HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET); // Low
 
@@ -105,7 +104,7 @@ static void MX_ADC1_Init(void);
 static void MX_TIM1_Init(void);
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
-void HAL_CAN_Send();
+void HAL_CAN_Send(CANFrame *can_frame = nullptr);
 // void HAL_CAN_Send_Obj(_params_v *params_obj);
 void write_flash();
 
@@ -168,7 +167,7 @@ void HAL_CAN_ErrorCallback(CAN_HandleTypeDef *hcan)
   HAL_UART_Transmit(&huart1, (uint8_t *)str1, strlen(str1), 100);
 }
 
-void HAL_CAN_Send()
+void HAL_CAN_Send(CANFrame *can_frame)
 {
   /*
     Заполняем структуру отвечающую за отправку кадров
@@ -187,6 +186,7 @@ void HAL_CAN_Send()
   CAN_TxHeaderTypeDef TxHeader;
   uint8_t TxData[8] = {0};
   uint32_t TxMailbox = 0;
+  TxHeader.StdId = UINT32_MAX;
 
   while (HAL_CAN_GetTxMailboxesFreeLevel(&hcan) == 0)
     ;
@@ -194,6 +194,17 @@ void HAL_CAN_Send()
   if (can_manager.has_tx_frames_for_transmission())
   {
     can_manager.fill_tx_frame(TxHeader, TxData);
+  }
+
+  if (can_frame != nullptr)
+  {
+    TxHeader.StdId = can_frame->get_id();
+    TxHeader.DLC = can_frame->get_data_length();
+    can_frame->copy_frame_data_to(TxData, 8);
+  }
+
+  if (TxHeader.StdId != UINT32_MAX)
+  {
     if (HAL_CAN_AddTxMessage(&hcan, &TxHeader, TxData, &TxMailbox) != HAL_OK)
     {
 #ifdef DEBUG
@@ -459,6 +470,8 @@ int main(void)
   /* USER CODE BEGIN WHILE */
 
   uint32_t last_tick = HAL_GetTick();
+  CANFrame can_frame;
+  uint8_t can_frame_data[8];
   while (1)
   {
     if (FlagReciveUART3 == 1)
@@ -486,35 +499,32 @@ int main(void)
 
     if (Button1 == 0)
     {
-      /*
-      TxHeader.StdId = 0x07B0;
-      TxHeader.DLC = 8;
-      TxData[0] = 0x44;
-      TxData[1] = 0x53;
-      TxData[2] = 0x46;
-      TxData[3] = 0x30;
-      TxData[4] = 0x30;
-      TxData[5] = 0x30;
-      TxData[6] = 0x31;
-      TxData[7] = 0x00;
-      HAL_CAN_Send();
-      */
+      can_frame_data[0] = 0x44;
+      can_frame_data[1] = 0x53;
+      can_frame_data[2] = 0x46;
+      can_frame_data[3] = 0x30;
+      can_frame_data[4] = 0x30;
+      can_frame_data[5] = 0x30;
+      can_frame_data[6] = 0x31;
+      can_frame_data[7] = 0x00;
+      can_frame.set_frame(0x07B0, can_frame_data, 8);
     }
     if (Button2 == 0)
     {
-      /*
-      TxHeader.StdId = 0x07B0;
-      TxHeader.DLC = 8;
-      TxData[0] = 0x44;
-      TxData[1] = 0x53;
-      TxData[2] = 0x46;
-      TxData[3] = 0x30;
-      TxData[4] = 0x30;
-      TxData[5] = 0x30;
-      TxData[6] = 0x32;
-      TxData[7] = 0x00;
-      HAL_CAN_Send();
-      */
+      can_frame_data[0] = 0x44;
+      can_frame_data[1] = 0x53;
+      can_frame_data[2] = 0x46;
+      can_frame_data[3] = 0x30;
+      can_frame_data[4] = 0x30;
+      can_frame_data[5] = 0x30;
+      can_frame_data[6] = 0x32;
+      can_frame_data[7] = 0x00;
+      can_frame.set_frame(0x07B0, can_frame_data, 8);
+    }
+    if (can_frame.is_initialized())
+    {
+      HAL_CAN_Send(&can_frame);
+      can_frame.clear_frame();
     }
 
     /* USER CODE END WHILE */
