@@ -471,6 +471,9 @@ int main(void)
     if (HAL_GetTick() - last_tick > 300)
     {
       can_manager.process();
+      if (can_manager.has_tx_frames_for_transmission())
+        HAL_CAN_Send();
+
     }
 
     // Perform ADC reading with 1 sec period
