@@ -4,6 +4,7 @@
 
 #include <stdint.h>
 
+#include "logger.h"
 #include "CAN_common.h"
 #include "DataField.h"
 #include "CANFrame.h"

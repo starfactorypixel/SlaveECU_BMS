@@ -6,6 +6,7 @@
 
 #include "stm32f1xx_hal.h"
 
+#include "logger.h"
 #include "CAN_common.h"
 #include "CANFrame.h"
 #include "CANObject.h"
