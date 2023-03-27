@@ -104,8 +104,7 @@ static void MX_ADC1_Init(void);
 static void MX_TIM1_Init(void);
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
-void HAL_CAN_Send(CANFrame *can_frame = nullptr);
-// void HAL_CAN_Send_Obj(_params_v *params_obj);
+void HAL_CAN_Send(CANFrame &can_frame);
 void write_flash();
 
 /* USER CODE END PFP */
@@ -167,7 +166,7 @@ void HAL_CAN_ErrorCallback(CAN_HandleTypeDef *hcan)
   HAL_UART_Transmit(&huart1, (uint8_t *)str1, strlen(str1), 100);
 }
 
-void HAL_CAN_Send(CANFrame *can_frame)
+void HAL_CAN_Send(CANFrame &can_frame)
 {
   /*
     Заполняем структуру отвечающую за отправку кадров
@@ -186,37 +185,35 @@ void HAL_CAN_Send(CANFrame *can_frame)
   CAN_TxHeaderTypeDef TxHeader;
   uint8_t TxData[8] = {0};
   uint32_t TxMailbox = 0;
-  TxHeader.StdId = UINT32_MAX;
+  TxHeader.StdId = can_frame.get_id();
 	TxHeader.ExtId = 0;
 	TxHeader.RTR = CAN_RTR_DATA; //CAN_RTR_REMOTE
 	TxHeader.IDE = CAN_ID_STD;   // CAN_ID_EXT
-	TxHeader.DLC = 0;
+	TxHeader.DLC = can_frame.get_data_length();
 	TxHeader.TransmitGlobalTime = DISABLE;
 
   while (HAL_CAN_GetTxMailboxesFreeLevel(&hcan) == 0)
     ;
 
-  if (can_frame != nullptr)
-  {
-    TxHeader.StdId = can_frame->get_id();
-    TxHeader.DLC = can_frame->get_data_length();
-    can_frame->copy_frame_data_to(TxData, 8);
-  }
-  else if (can_manager.has_tx_frames_for_transmission())
-  {
-    can_manager.give_tx_frame(TxHeader, TxData);
-  }
+  can_frame.copy_frame_data_to(TxData, 8);
 
-  if (TxHeader.StdId != UINT32_MAX)
+  if (HAL_CAN_AddTxMessage(&hcan, &TxHeader, TxData, &TxMailbox) != HAL_OK)
   {
-    if (HAL_CAN_AddTxMessage(&hcan, &TxHeader, TxData, &TxMailbox) != HAL_OK)
-    {
 #ifdef DEBUG
-      sprintf(str1, "CAN 0x%04lX", TxHeader.StdId);
-      HAL_UART_Transmit(&huart1, (uint8_t *)"ER SEND\n", 8, 100);
+    sprintf(str1, "CAN 0x%04lX", TxHeader.StdId);
+    HAL_UART_Transmit(&huart1, (uint8_t *)"ER SEND\n", 8, 100);
 #endif
-    }
   }
+}
+
+void CAN_Send_All_Frames(CANManager &can_manager)
+{
+    CANFrame can_frame;
+    while (can_manager.has_tx_frames_for_transmission())
+    {
+        can_manager.give_tx_frame(can_frame);
+        HAL_CAN_Send(can_frame);
+    }
 }
 
 uint8_t ADCtoTEMPER(uint16_t adc_val)
@@ -490,7 +487,7 @@ int main(void)
     {
       can_manager.process();
       if (can_manager.has_tx_frames_for_transmission())
-        HAL_CAN_Send();
+        CAN_Send_All_Frames(can_manager);
 
       last_tick1 = HAL_GetTick();
     }
@@ -530,7 +527,7 @@ int main(void)
     }
     if (can_frame.is_initialized())
     {
-      HAL_CAN_Send(&can_frame);
+      HAL_CAN_Send(can_frame);
       can_frame.clear_frame();
     }
 
