@@ -187,6 +187,11 @@ void HAL_CAN_Send(CANFrame *can_frame)
   uint8_t TxData[8] = {0};
   uint32_t TxMailbox = 0;
   TxHeader.StdId = UINT32_MAX;
+	TxHeader.ExtId = 0;
+	TxHeader.RTR = CAN_RTR_DATA; //CAN_RTR_REMOTE
+	TxHeader.IDE = CAN_ID_STD;   // CAN_ID_EXT
+	TxHeader.DLC = 0;
+	TxHeader.TransmitGlobalTime = DISABLE;
 
   while (HAL_CAN_GetTxMailboxesFreeLevel(&hcan) == 0)
     ;
