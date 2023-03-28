@@ -38,12 +38,22 @@ extern "C" {
 #include "ds18b20.h"
 #include "flash.h"
 
+#ifdef __cplusplus
+}
+#endif
+
+#include <vector>
+
 #include "BMS_low_level_abstraction.h"
 #include "CAN_common.h"
 #include "DataField.h"
 #include "CANFrame.h"
 #include "CANObject.h"
 #include "CANManager.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/

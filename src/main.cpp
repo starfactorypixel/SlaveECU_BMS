@@ -385,13 +385,7 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
   uint8_t status;
-  
-  /*
-  uint8_t dt[8];
-  uint16_t raw_temper;
-  float temper;
-  char c;
-  */
+
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
