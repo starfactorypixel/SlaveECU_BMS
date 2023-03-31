@@ -5,40 +5,24 @@
  * CANManager class: implements CAN Manager interface
  *
  ******************************************************************************************************************************/
-/*
-// No default constructor because we should have the tick_function!
-CANManager::CANManager()
-{
-    _rx_can_frame.clear_frame();
-    _tx_can_frame.clear_frame();
-
-    _can_objects = nullptr;
-    _can_objects_count = 0;
-
-    _tick_func = nullptr;
-}
-*/
-
 CANManager::CANManager(get_ms_tick_function_t tick_func)
 {
-    _rx_can_frame.clear_frame();
-    _tx_can_frame.clear_frame();
-
-    _can_objects = nullptr;
-    _can_objects_count = 0;
+    _can_objects_list.clear();
 
     set_tick_func(tick_func);
 }
 
 CANManager::~CANManager()
 {
-    if (has_can_objects())
+    _can_objects_list.clear();
+
+    while (!_rx_frame_queue.empty())
     {
-        for (uint8_t i = 0; i < get_can_objects_count(); i++)
-        {
-            delete _can_objects[i];
-        }
-        delete[] _can_objects;
+        _rx_frame_queue.pop();
+    }
+    while (!_tx_frame_queue.empty())
+    {
+        _tx_frame_queue.pop();
     }
 }
 
@@ -58,21 +42,23 @@ uint32_t CANManager::get_tick()
 bool CANManager::process()
 {
     bool result = true;
-    bool co_update_result = true;
-    CANObject *co = nullptr;
-    for (uint8_t i = 0; i < get_can_objects_count(); i++)
-    {
-        co = get_can_object_by_index(i);
-        // result = result && get_can_object_by_index(i)->update();
-        co_update_result = co->update();
-        result = result && co_update_result;
 
-        if (co->has_data_to_send())
-        {
-            PixelCANFrame new_can_frame;
-            co->fill_can_frame(new_can_frame, CAN_FT_NONE);
-            _tx_can_frame.set_frame(new_can_frame); // TODO: HERE!
-        }
+    bool co_update_result = true;
+    for (CANObject &i : _can_objects_list)
+    {
+        co_update_result = i.update();
+        result = result && co_update_result;
+    }
+
+    CANFrame cf;
+    CANObject *co = nullptr;
+    while (has_rx_frames_in_queue())
+    {
+        pop_rx_frame_from_queue(cf);
+        co = get_can_object_by_can_id(cf.get_id());
+        if (co == nullptr)
+            return false;
+        co->process_incoming_frame(cf);
     }
 
     return result;
@@ -83,119 +69,169 @@ void CANManager::print(const char *prefix)
     char str[100];
     LOG("%s***********************************************", prefix);
     LOG("%sCAN Manager data", prefix);
-    sprintf(str, "%sRX CAN frame: ", prefix);
-    _rx_can_frame.print(str);
-    sprintf(str, "%sTX CAN frame: ", prefix);
-    _tx_can_frame.print(str);
+
+    // print CANObject data
     LOG("%sCAN Objects:", prefix);
-    for (uint8_t i = 0; i < get_can_objects_count(); i++)
+    for (CANObject &i : _can_objects_list)
     {
-        sprintf(str, "%sCAN Object #%d: ", prefix, i);
-        get_can_object_by_index(i)->print(str);
+        sprintf(str, "%s    0x%04X: ", prefix, i.get_id());
+        i.print(str);
     }
+
+    // print RX queue items
+    LOG("%sRX queue:", prefix);
+    uint16_t queue_item_counter = 0;
+    std::queue<CANFrame> temp = _rx_frame_queue;
+    while (!temp.empty())
+    {
+        queue_item_counter++;
+        sprintf(str, "%s    #%d: ", prefix, queue_item_counter);
+        temp.front().print(str);
+        temp.pop();
+    }
+    if (queue_item_counter == 0)
+    {
+        LOG("%s    RX queue is empty.", prefix);
+    }
+
+    // print TX queue items
+    LOG("%sTX queue:", prefix);
+    queue_item_counter = 0;
+    temp = _tx_frame_queue;
+    while (!temp.empty())
+    {
+        queue_item_counter++;
+        sprintf(str, "%s    #%d: ", prefix, queue_item_counter);
+        temp.front().print(str);
+        temp.pop();
+    }
+    if (queue_item_counter == 0)
+    {
+        LOG("%s    TX queue is empty.", prefix);
+    }
+
     LOG("%s***********************************************", prefix);
 }
 
 bool CANManager::take_new_rx_frame(CANFrame &can_frame)
 {
-    _rx_can_frame.set_frame(can_frame);
+    if (!has_can_object(can_frame.get_id()))
+        return false; // we don't have such CANObject
 
-    can_frame.print("[CAN Manager] new RX frame: ");
+    _rx_frame_queue.push(can_frame);
+
     return true;
 }
 
 bool CANManager::take_new_rx_frame(can_id_t id, uint8_t *data, uint8_t data_length)
 {
-    _rx_can_frame.set_frame(id, data, data_length);
-    take_new_rx_frame(_rx_can_frame);
-    return true;
+    CANFrame new_frame(id, data, data_length);
+    return take_new_rx_frame(new_frame);
 }
 
 bool CANManager::take_new_rx_frame(CAN_RxHeaderTypeDef &header, uint8_t aData[])
 {
-    // TODO: Hardware dependent! Should process standard or extended frames.
-    // Probably this behaviour should be placed outside the class. Or we need to implement it here.
-    _rx_can_frame.set_frame(header.StdId, aData, header.DLC);
-    take_new_rx_frame(_rx_can_frame);
+    CANFrame new_frame(header.StdId, aData, header.DLC);
+    return take_new_rx_frame(new_frame);
+}
+
+bool CANManager::pop_rx_frame_from_queue(CANFrame &can_frame)
+{
+    if (!has_rx_frames_in_queue())
+        return false;
+
+    can_frame.set_frame(_rx_frame_queue.front());
+    _rx_frame_queue.pop();
+
+    return true;
+}
+
+uint8_t CANManager::get_rx_queue_size()
+{
+    return _rx_frame_queue.size();
+}
+
+uint8_t CANManager::get_tx_queue_size()
+{
+    return _tx_frame_queue.size();
+}
+
+bool CANManager::has_rx_frames_in_queue()
+{
+    return get_rx_queue_size() > 0;
+}
+
+bool CANManager::add_tx_queue_item(CANFrame &can_frame)
+{
+    _tx_frame_queue.push(can_frame);
     return true;
 }
 
 bool CANManager::has_tx_frames_for_transmission()
 {
-    return _tx_can_frame.is_initialized();
+    return get_tx_queue_size() > 0;
 }
 
 bool CANManager::give_tx_frame(CANFrame &can_frame)
 {
-    LOG("give_tx_frame(&can_frame)");
-    can_frame.set_frame(_tx_can_frame);
-    can_frame.print("[CAN Manager] new TX frame: ");
+    if (!has_tx_frames_for_transmission())
+        return false;
 
-    _tx_can_frame.clear_frame();
+    can_frame.set_frame(_tx_frame_queue.front());
+    _tx_frame_queue.pop();
 
-    return false;
+    return true;
 }
 
 bool CANManager::give_tx_frame(can_id_t &id, uint8_t *data, uint8_t &data_length)
 {
-    LOG("give_tx_frame(&id, *data, &data_length)");
-    id = _tx_can_frame.get_id();
-    data_length = _tx_can_frame.get_data_length();
-    memcpy(data, _tx_can_frame.get_data_pointer(), data_length);
+    if (!has_tx_frames_for_transmission())
+        return false;
 
-    _tx_can_frame.clear_frame();
+    CANFrame can_frame;
+    give_tx_frame(can_frame);
 
-    return false;
+    id = can_frame.get_id();
+    data_length = can_frame.get_data_length();
+    memcpy(data, can_frame.get_data_pointer(), data_length);
+
+    return true;
 }
 
 bool CANManager::give_tx_frame(CAN_TxHeaderTypeDef &header, uint8_t aData[])
 {
-    // TODO: Hardware dependent! Should process standard or extended frames.
-    // Probably this behaviour should be placed outside the class. Or we need to implement it here.
-    LOG("give_tx_frame(*pHeader, aData[])");
-    header.DLC = _tx_can_frame.get_data_length();
-    header.StdId = _tx_can_frame.get_id();
-    _tx_can_frame.copy_frame_data_to(aData, 8);
+    if (!has_tx_frames_for_transmission())
+        return false;
 
-    _tx_can_frame.clear_frame();
+    CANFrame can_frame;
+    give_tx_frame(can_frame);
 
-    return false;
+    header.DLC = can_frame.get_data_length();
+    header.StdId = can_frame.get_id();
+    can_frame.copy_frame_data_to(aData, 8);
+
+    return true;
 }
 
 uint8_t CANManager::get_can_objects_count()
 {
-    return _can_objects_count;
-}
-
-CANObject *CANManager::add_can_object()
-{
-    CANObject **new_can_objects = new CANObject *[get_can_objects_count() + 1];
-    memcpy(new_can_objects, _can_objects, sizeof(CANObject *) * get_can_objects_count());
-    new_can_objects[get_can_objects_count()] = new CANObject;
-    new_can_objects[get_can_objects_count()]->set_tick_func(_tick_func);
-    new_can_objects[get_can_objects_count()]->update_state();
-
-    if (has_can_objects())
-    {
-        delete[] _can_objects;
-    }
-    _can_objects = new_can_objects;
-    _can_objects_count++;
-
-    return _can_objects[get_can_objects_count() - 1];
+    return _can_objects_list.size();
 }
 
 CANObject *CANManager::add_can_object(can_id_t id)
 {
     CANObject *new_can_object = get_can_object_by_can_id(id);
 
-    if (new_can_object == nullptr)
-    {
-        new_can_object = add_can_object();
-        new_can_object->set_id(id);
-        new_can_object->update_state();
-    }
-    return new_can_object;
+    if (new_can_object != nullptr)
+        return new_can_object;
+
+    CANObject co;
+    co.set_parent(*this);
+    co.set_id(id);
+    co.update_state();
+    _can_objects_list.push_back(co);
+
+    return &_can_objects_list.back();
 }
 
 CANObject *CANManager::get_can_object_by_index(uint8_t index)
@@ -203,15 +239,21 @@ CANObject *CANManager::get_can_object_by_index(uint8_t index)
     if (index >= get_can_objects_count())
         return nullptr;
 
-    return _can_objects[index];
+    std::list<CANObject>::iterator it = _can_objects_list.begin();
+    std::advance(it, index);
+
+    return &(*it);
 }
 
 CANObject *CANManager::get_can_object_by_can_id(can_id_t id)
 {
-    for (uint8_t i = 0; i < get_can_objects_count(); i++)
+    if (!has_can_objects())
+        return nullptr;
+
+    for (CANObject &i : _can_objects_list)
     {
-        if (id == get_can_object_by_index(i)->get_id())
-            return get_can_object_by_index(i);
+        if (id == i.get_id())
+            return &i;
     }
 
     return nullptr;
@@ -219,45 +261,26 @@ CANObject *CANManager::get_can_object_by_can_id(can_id_t id)
 
 bool CANManager::delete_can_object(can_id_t id)
 {
-    if (!has_can_object(id))
+    if (!has_can_objects())
         return false;
 
-    uint8_t index = 0;
-    if (!_get_can_object_index(id, index))
-        return false;
-
-    CANObject **new_can_objects = new CANObject *[get_can_objects_count() - 1];
-
-    memcpy(new_can_objects, _can_objects, sizeof(CANObject *) * index);
-    memcpy(new_can_objects + index, _can_objects + index + 1, sizeof(CANObject *) * (get_can_objects_count() - index - 1));
-    delete _can_objects[index];
-    delete[] _can_objects;
-    _can_objects = new_can_objects;
-    _can_objects_count--;
-
-    return true;
+    for (CANObject &i : _can_objects_list)
+    {
+        if (id == i.get_id())
+        {
+            _can_objects_list.remove(i);
+            return true;
+        }
+    }
+    return false;
 }
 
 bool CANManager::has_can_objects()
 {
-    return (_can_objects != nullptr && get_can_objects_count() != 0);
+    return (get_can_objects_count() != 0);
 }
 
 bool CANManager::has_can_object(can_id_t id)
 {
     return (nullptr != get_can_object_by_can_id(id));
-}
-
-bool CANManager::_get_can_object_index(can_id_t id, uint8_t &index)
-{
-    for (uint8_t i = 0; i < get_can_objects_count(); i++)
-    {
-        if (id == get_can_object_by_index(i)->get_id())
-        {
-            index = i;
-            return true;
-        }
-    }
-
-    return false;
 }

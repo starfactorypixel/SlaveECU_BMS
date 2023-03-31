@@ -10,11 +10,10 @@ DataField::DataField()
     _zerroing_all_unsafe();
 }
 
-DataField::DataField(data_field_t source_type, void *data, uint32_t array_item_count, get_ms_tick_function_t tick_func)
+DataField::DataField(data_field_t source_type, void *data_source, uint32_t array_item_count)
 {
     DataField();
-    set_data_source(source_type, data, array_item_count);
-    set_tick_func(tick_func);
+    set_data_source(source_type, data_source, array_item_count);
 }
 
 DataField::~DataField()
@@ -22,24 +21,7 @@ DataField::~DataField()
     delete_data_source();
 }
 
-void DataField::set_tick_func(get_ms_tick_function_t tick_func)
-{
-    _tick_func = tick_func;
-}
-
-bool DataField::has_tick_func()
-{
-    return _tick_func != nullptr;
-}
-
-uint32_t DataField::get_tick()
-{
-    if (has_tick_func())
-        return _tick_func();
-    
-    return 0;
-}
-
+// use it with caution! it is unsafe! risk of memory leak!
 void DataField::_zerroing_all_unsafe()
 {
     _last_data_copy = nullptr;
@@ -49,8 +31,10 @@ void DataField::_zerroing_all_unsafe()
     _array_item_count = 0;
     _array_item_size = 0;
 
-    _last_update_time = 0;
-    _state = DFS_ERROR;
+    _checker_min.u32 = 0;
+    _checker_max.u32 = 0;
+
+    set_state(DFS_ERROR);
 }
 
 void DataField::delete_data_source()
@@ -95,7 +79,7 @@ bool DataField::set_data_source(data_field_t source_type, void *data, uint32_t a
 {
     if (source_type == DF_UNKNOWN || data == nullptr || array_item_count == 0)
     {
-        update_state();
+        set_state(DFS_ERROR);
         return false;
     }
     delete_data_source();
@@ -134,7 +118,7 @@ bool DataField::set_data_source(data_field_t source_type, void *data, uint32_t a
 
     case DF_UNKNOWN:
     default:
-        update_state();
+        set_state(DFS_ERROR);
         // all data was set to zero below
         return false;
     }
@@ -144,30 +128,22 @@ bool DataField::set_data_source(data_field_t source_type, void *data, uint32_t a
     _src_data_pointer = data;
 
     update_local_copy();
-    
-    return update_state() == DFS_OK;
+    update_state();
+
+    return !has_errors();
 }
 
 bool DataField::has_data_source()
 {
     if (_array_item_size == 0 || _array_item_count == 0)
-    {
-        //_set_state(DFS_ERROR);
         return false;
-    }
 
     if (_src_data_pointer == nullptr || _last_data_copy == nullptr)
-    {
-        //_set_state(DFS_ERROR);
         return false;
-    }
 
     if (_source_type == DF_UNKNOWN)
-    {
-        //_set_state(DFS_ERROR);
         return false;
-    }
-    
+
     return true;
 }
 
@@ -194,14 +170,75 @@ bool DataField::update_local_copy()
 
     memcpy(get_data_byte_array_pointer(), get_src_pointer(), get_data_byte_array_length());
 
-    _last_update_time = get_tick();
-
     return true;
 }
 
-uint32_t DataField::get_last_update_time()
+void DataField::set_alarm_checker(data_mapper_t min, data_mapper_t max)
 {
-    return _last_update_time;
+    _checker_min = min;
+    _checker_max = max;
+}
+
+void DataField::reset_alarm_checker()
+{
+    _checker_min.u32 = 0;
+    _checker_max.u32 = 0;
+}
+
+// checks if there any issues found by checker;
+// it checks local copy of data, not the source
+void DataField::perform_alarm_check()
+{
+    if (!has_data_source() || has_errors())
+        return;
+
+    // checker is disabled
+    if (_checker_min.u32 == 0 && _checker_max.u32 == 0)
+        return;
+
+    data_mapper_t curr_value = {0};
+    memcpy(&curr_value, get_data_byte_array_pointer(), _array_item_size);
+
+    switch (get_source_type())
+    {
+    case DF_INT8:
+        if (curr_value.i8 < _checker_min.i8 || curr_value.i8 > _checker_max.i8)
+            set_state(DFS_ALARM);
+        break;
+
+    case DF_UINT8:
+        if (curr_value.u8 < _checker_min.u8 || curr_value.u8 > _checker_max.u8)
+            set_state(DFS_ALARM);
+        break;
+
+    case DF_INT16:
+        if (curr_value.i16 < _checker_min.i16 || curr_value.i16 > _checker_max.i16)
+            set_state(DFS_ALARM);
+        break;
+
+    case DF_UINT16:
+        if (curr_value.u16 < _checker_min.u16 || curr_value.u16 > _checker_max.u16)
+            set_state(DFS_ALARM);
+        break;
+
+    case DF_INT32:
+        if (curr_value.i32 < _checker_min.i32 || curr_value.i32 > _checker_max.i32)
+            set_state(DFS_ALARM);
+        break;
+
+    case DF_UINT32:
+        if (curr_value.u32 < _checker_min.u32 || curr_value.u32 > _checker_max.u32)
+            set_state(DFS_ALARM);
+        break;
+
+    default:
+        break;
+    }
+}
+
+bool DataField::has_alarm_state()
+{
+    return get_state() == DFS_ALARM;
 }
 
 data_field_t DataField::get_source_type()
@@ -251,20 +288,26 @@ data_field_state_t DataField::get_state()
     return _state;
 }
 
-/*
-void DataField::_set_state(data_field_state_t state)
+void DataField::set_state(data_field_state_t state)
 {
     _state = state;
 }
-*/
 
 data_field_state_t DataField::update_state()
 {
-    bool state_checker = true;
-    state_checker = state_checker && has_data_source();
-    state_checker = state_checker && has_tick_func();
+    set_state(DFS_OK);
 
-    _state = (state_checker) ? DFS_OK : DFS_ERROR;
+    perform_alarm_check();
+
+    if (!has_data_source())
+    {
+        set_state(DFS_ERROR);
+    }
 
     return get_state();
+}
+
+bool DataField::has_errors()
+{
+    return get_state() == DFS_ERROR;
 }

@@ -2,8 +2,8 @@
 #define LOGGER_H
 //#pragma once
 
-#include <string.h>
 #include <stdio.h>
+#include <string.h>
 
 
 #ifdef DEBUG

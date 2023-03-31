@@ -1,6 +1,6 @@
 #ifndef CANFRAME_H
 #define CANFRAME_H
-//#pragma once
+// #pragma once
 
 #include <stdint.h>
 #include <string.h>
@@ -18,23 +18,30 @@ public:
     CANFrame(can_id_t id, uint8_t *data, uint8_t data_length);
     ~CANFrame();
 
+    bool operator==(const CANFrame &frame);
+
     void set_frame(CANFrame &can_frame);
     void set_frame(can_id_t id, uint8_t *data, uint8_t data_length);
     void set_frame(can_id_t id, uint8_t data_length,
                    uint8_t v1 = 0, uint8_t v2 = 0, uint8_t v3 = 0, uint8_t v4 = 0,
                    uint8_t v5 = 0, uint8_t v6 = 0, uint8_t v7 = 0, uint8_t v8 = 0);
 
-    virtual void clear_frame();
+    void clear_frame();
 
     bool is_initialized();
 
-    can_id_t get_id();
-    uint8_t get_data_length();
-    uint8_t get_max_data_length();
+    const can_id_t get_id();
+    void set_id(can_id_t id);
+
+    const CAN_function_id_t get_function_id();
+    void set_function_id(CAN_function_id_t id);
+
+    const uint8_t get_data_length();
+    static const uint8_t get_max_data_length();
     uint8_t *get_data_pointer();
     bool copy_frame_data_to(uint8_t *destination, uint8_t max_dest_length);
 
-    bool has_data();
+    const bool has_data();
 
     void print(const char *prefix);
 
@@ -46,28 +53,7 @@ protected:
     uint8_t _data_length = 0;
 
     bool _is_initialized = false;
-
-private:
-    // code
-};
-
-/******************************************************************************************************************************
- *
- * PixelCANFrame: Pixel specific CAN frame
- *
- ******************************************************************************************************************************/
-class PixelCANFrame : public CANFrame
-{
-public:
-    PixelCANFrame();
-    PixelCANFrame(can_id_t id, uint8_t *data, uint8_t data_length);
-    ~PixelCANFrame();
-
-    func_type_t get_func();
-    bool set_func(func_type_t func);
-
-private:
-    uint8_t *_func;
+    
 };
 
 #endif // CANFRAME_H

@@ -1,9 +1,9 @@
 #include "CANFrame.h"
 
 /******************************************************************************************************************************
- * 
+ *
  * CANFrame: data frame of CAN bus
- * 
+ *
  ******************************************************************************************************************************/
 CANFrame::CANFrame()
 {
@@ -18,6 +18,25 @@ CANFrame::CANFrame(can_id_t id, uint8_t *data, uint8_t data_length)
 
 CANFrame::~CANFrame()
 {
+}
+
+bool CANFrame::operator==(const CANFrame &frame)
+{
+    if (frame._id != get_id())
+        return false;
+
+    if (frame._data_length != get_data_length())
+        return false;
+
+    const uint8_t *that_data = frame._data;
+    uint8_t *my_data = get_data_pointer();
+    for (uint8_t i = 0; i < get_data_length(); i++)
+    {
+        if ((my_data[i] ^ that_data[i]) != 0)
+            return false;
+    }
+
+    return true;
 }
 
 void CANFrame::set_frame(CANFrame &can_frame)
@@ -70,17 +89,38 @@ bool CANFrame::is_initialized()
     return _is_initialized;
 }
 
-can_id_t CANFrame::get_id()
+const can_id_t CANFrame::get_id()
 {
     return _id;
 }
 
-uint8_t CANFrame::get_data_length()
+void CANFrame::set_id(can_id_t id)
+{
+    _id = id;
+}
+
+const CAN_function_id_t CANFrame::get_function_id()
+{
+    if (!has_data())
+        return CAN_FUNC_NONE;
+
+    return (CAN_function_id_t)get_data_pointer()[0];
+}
+
+void CANFrame::set_function_id(CAN_function_id_t id)
+{
+    if (!has_data())
+        return;
+    
+    get_data_pointer()[0] = id;
+}
+
+const uint8_t CANFrame::get_data_length()
 {
     return _data_length;
 }
 
-uint8_t CANFrame::get_max_data_length()
+const uint8_t CANFrame::get_max_data_length()
 {
     return CAN_MAX_PAYLOAD;
 }
@@ -103,7 +143,7 @@ bool CANFrame::copy_frame_data_to(uint8_t *destination, uint8_t max_dest_length)
     return true;
 }
 
-bool CANFrame::has_data()
+const bool CANFrame::has_data()
 {
     return get_data_length() > 0;
 }
@@ -139,98 +179,64 @@ void CANFrame::_frame_func_to_string(char *dest_string)
 
     switch (func)
     {
-    case CAN_FT_NONE:
-        strcpy(dest_string, "CAN_FT_NONE");
+    case CAN_FUNC_NONE:
+        strcpy(dest_string, "CAN_FUNC_NONE");
         break;
 
-    case CAN_FT_SET_BOOL_IN:
-        strcpy(dest_string, "CAN_FT_SET_BOOL_IN");
+    case CAN_FUNC_SET_BOOL_IN:
+        strcpy(dest_string, "CAN_FUNC_SET_BOOL_IN");
         break;
 
-    case CAN_FT_SET_BOOL_OUT_OK:
-        strcpy(dest_string, "CAN_FT_SET_BOOL_OUT_OK");
+    case CAN_FUNC_SET_BOOL_OUT_OK:
+        strcpy(dest_string, "CAN_FUNC_SET_BOOL_OUT_OK");
         break;
 
-    case CAN_FT_SET_BOOL_OUT_ERR:
-        strcpy(dest_string, "CAN_FT_SET_BOOL_OUT_ERR");
+    case CAN_FUNC_SET_BOOL_OUT_ERR:
+        strcpy(dest_string, "CAN_FUNC_SET_BOOL_OUT_ERR");
         break;
 
-    case CAN_FT_SET_VALUE_IN:
-        strcpy(dest_string, "CAN_FT_SET_VALUE_IN");
+    case CAN_FUNC_SET_VALUE_IN:
+        strcpy(dest_string, "CAN_FUNC_SET_VALUE_IN");
         break;
 
-    case CAN_FT_SET_VALUE_OUT_OK:
-        strcpy(dest_string, "CAN_FT_SET_VALUE_OUT_OK");
+    case CAN_FUNC_SET_VALUE_OUT_OK:
+        strcpy(dest_string, "CAN_FUNC_SET_VALUE_OUT_OK");
         break;
 
-    case CAN_FT_SET_VALUE_OUT_ERR:
-        strcpy(dest_string, "CAN_FT_SET_VALUE_OUT_ERR");
+    case CAN_FUNC_SET_VALUE_OUT_ERR:
+        strcpy(dest_string, "CAN_FUNC_SET_VALUE_OUT_ERR");
         break;
 
-    case CAN_FT_REQUEST_IN:
-        strcpy(dest_string, "CAN_FT_REQUEST_IN");
+    case CAN_FUNC_REQUEST_IN:
+        strcpy(dest_string, "CAN_FUNC_REQUEST_IN");
         break;
 
-    case CAN_FT_REQUEST_OUT_OK:
-        strcpy(dest_string, "CAN_FT_REQUEST_OUT_OK");
+    case CAN_FUNC_REQUEST_OUT_OK:
+        strcpy(dest_string, "CAN_FUNC_REQUEST_OUT_OK");
         break;
 
-    case CAN_FT_REQUEST_OUT_ERR:
-        strcpy(dest_string, "CAN_FT_REQUEST_OUT_ERR");
+    case CAN_FUNC_REQUEST_OUT_ERR:
+        strcpy(dest_string, "CAN_FUNC_REQUEST_OUT_ERR");
         break;
 
-    case CAN_FT_TIMER_NORMAL:
-        strcpy(dest_string, "CAN_FT_TIMER_NORMAL");
+    case CAN_FUNC_TIMER_NORMAL:
+        strcpy(dest_string, "CAN_FUNC_TIMER_NORMAL");
         break;
 
-    case CAN_FT_TIMER_ATTENTION:
-        strcpy(dest_string, "CAN_FT_TIMER_ATTENTION");
+    case CAN_FUNC_TIMER_ATTENTION:
+        strcpy(dest_string, "CAN_FUNC_TIMER_ATTENTION");
         break;
 
-    case CAN_FT_TIMER_CRITICAL:
-        strcpy(dest_string, "CAN_FT_TIMER_CRITICAL");
+    case CAN_FUNC_TIMER_CRITICAL:
+        strcpy(dest_string, "CAN_FUNC_TIMER_CRITICAL");
         break;
 
-    case CAN_FT_EVENT_ERROR:
-        strcpy(dest_string, "CAN_FT_EVENT_ERROR");
+    case CAN_FUNC_EVENT_ERROR:
+        strcpy(dest_string, "CAN_FUNC_EVENT_ERROR");
         break;
 
     default:
         strcpy(dest_string, "UNKNOWN");
         break;
     }
-}
-
-/******************************************************************************************************************************
- * 
- * PixelCANFrame: Pixel specific CAN frame
- * 
- ******************************************************************************************************************************/
-PixelCANFrame::PixelCANFrame() {
-    _func = get_data_pointer();
-}
-
-PixelCANFrame::PixelCANFrame(can_id_t id, uint8_t *data, uint8_t data_length) : PixelCANFrame()
-{
-    CANFrame(id, data, data_length);
-}
-
-PixelCANFrame::~PixelCANFrame()
-{
-}
-
-func_type_t PixelCANFrame::get_func()
-{
-    return (func_type_t)_func[0];
-}
-
-bool PixelCANFrame::set_func(func_type_t func)
-{
-    if (get_data_length() > 0)
-    {
-        _func[0] = (uint8_t)func;
-        return true;
-    }
-
-    return false;
 }

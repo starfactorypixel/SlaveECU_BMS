@@ -42,14 +42,18 @@ extern "C" {
 }
 #endif
 
-#include <vector>
+#include <time.h>
+#include <stdint.h>
+#include <cassert>
 
 #include "BMS_low_level_abstraction.h"
+#include "logger.h"
 #include "CAN_common.h"
 #include "DataField.h"
 #include "CANFrame.h"
 #include "CANObject.h"
 #include "CANManager.h"
+#include "CANFunction.h"
 
 #ifdef __cplusplus
 extern "C" {

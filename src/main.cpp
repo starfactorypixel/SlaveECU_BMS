@@ -122,8 +122,6 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
   uint32_t *BMS_header = (uint32_t *)receiveBuff_huart3;
   if (*BMS_header == BMS_PACKET_HEADER && Size >= BMS_BOARD_PACKET_SIZE)
   {
-    // ReciveUartSize = Size; // пока не понял, зачем оно нам тут
-
     // set flag that BMS packet received
     FlagReciveUART3 = 1;
 
@@ -186,11 +184,11 @@ void HAL_CAN_Send(CANFrame &can_frame)
   uint8_t TxData[8] = {0};
   uint32_t TxMailbox = 0;
   TxHeader.StdId = can_frame.get_id();
-	TxHeader.ExtId = 0;
-	TxHeader.RTR = CAN_RTR_DATA; //CAN_RTR_REMOTE
-	TxHeader.IDE = CAN_ID_STD;   // CAN_ID_EXT
-	TxHeader.DLC = can_frame.get_data_length();
-	TxHeader.TransmitGlobalTime = DISABLE;
+  TxHeader.ExtId = 0;
+  TxHeader.RTR = CAN_RTR_DATA; // CAN_RTR_REMOTE
+  TxHeader.IDE = CAN_ID_STD;   // CAN_ID_EXT
+  TxHeader.DLC = can_frame.get_data_length();
+  TxHeader.TransmitGlobalTime = DISABLE;
 
   while (HAL_CAN_GetTxMailboxesFreeLevel(&hcan) == 0)
     ;
@@ -208,12 +206,12 @@ void HAL_CAN_Send(CANFrame &can_frame)
 
 void CAN_Send_All_Frames(CANManager &can_manager)
 {
-    CANFrame can_frame;
-    while (can_manager.has_tx_frames_for_transmission())
-    {
-        can_manager.give_tx_frame(can_frame);
-        HAL_CAN_Send(can_frame);
-    }
+  CANFrame can_frame;
+  while (can_manager.has_tx_frames_for_transmission())
+  {
+    can_manager.give_tx_frame(can_frame);
+    HAL_CAN_Send(can_frame);
+  }
 }
 
 uint8_t ADCtoTEMPER(uint16_t adc_val)
@@ -277,9 +275,9 @@ void read_ds18b20()
     HAL_UART_Transmit(&huart1, (uint8_t *)str1, strlen(str1), 0x1000);
 
     // temp_5_19[i] for i=0..9 is reserved for 10 ADC values
-    if (i+9 < 15)
+    if (i + 9 < 15)
     {
-      bms_can_data.other_temperature.temp_5_19[i+9] = ((raw_temper & 0x07FF) >> 4);
+      bms_can_data.other_temperature.temp_5_19[i + 9] = ((raw_temper & 0x07FF) >> 4);
     }
   }
 
@@ -396,7 +394,7 @@ int main(void)
   /* USER CODE BEGIN Init */
   memset(&bms_can_data, 0, sizeof(bms_can_data_t));
   init_can_manager_for_bms(can_manager, bms_can_data);
-  
+
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -419,7 +417,7 @@ int main(void)
   HAL_TIM_Base_Start_IT(&htim1);
 
   // TODO: вроде как в таблице никаких пороговых значений температуры нет...
-  //MaxTemperature.data[2] = ThresholdTemperature1; // пороговое значение предельной температуры
+  // MaxTemperature.data[2] = ThresholdTemperature1; // пороговое значение предельной температуры
 
   // прочитать сохраненные параметры из Flash
   readEeprom(21);
@@ -479,7 +477,10 @@ int main(void)
     // CAN Manager checks data every 300 ms
     if (HAL_GetTick() - last_tick1 > 300)
     {
+      // do all stuff and process RX frames
       can_manager.process();
+
+      // send TX frames if there are any
       if (can_manager.has_tx_frames_for_transmission())
         CAN_Send_All_Frames(can_manager);
 
@@ -489,7 +490,7 @@ int main(void)
     // Perform ADC reading with 1 sec period
     if (HAL_GetTick() - last_tick2 > 1000)
     {
-      readADC(); // read 10 ADC channels
+      readADC();      // read 10 ADC channels
       read_ds18b20(); // read all DS18B20 temperature sensors
       convert_bms_data_from_uart_to_can_structure(bms_packet_data, bms_can_data);
       last_tick2 = HAL_GetTick();
