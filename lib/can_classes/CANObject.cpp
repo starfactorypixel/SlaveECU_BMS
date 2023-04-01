@@ -355,7 +355,6 @@ CANFunctionBase *CANObject::add_function(CAN_function_id_t id)
     }
 
     CANFunctionBase *cf = nullptr;
-    CANFunctionBase *cf_next = nullptr;
     switch (id)
     {
     case CAN_FUNC_SET_BOOL_IN:

@@ -10,9 +10,8 @@ DataField::DataField()
     _zerroing_all_unsafe();
 }
 
-DataField::DataField(data_field_t source_type, void *data_source, uint32_t array_item_count)
+DataField::DataField(data_field_t source_type, void *data_source, uint32_t array_item_count) : DataField()
 {
-    DataField();
     set_data_source(source_type, data_source, array_item_count);
 }
 

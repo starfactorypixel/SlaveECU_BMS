@@ -92,7 +92,7 @@ protected:
     bool _copy_data_field_to_local(DataField &data_field, uint8_t dest_byte_offset);
 
 private:
-    can_id_t _id;
+    can_id_t _id = 0;
     CANManager *_parent = nullptr;
     can_object_state_t _state = COS_UNKNOWN_ERROR;
 

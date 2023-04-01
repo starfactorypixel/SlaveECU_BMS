@@ -10,14 +10,9 @@ CANFunctionBase::CANFunctionBase(CAN_function_id_t id,
                                  CAN_function_handler_t external_handler,
                                  CANFunctionBase *next_ok_function,
                                  CANFunctionBase *next_err_function)
+    : _id(id), _state(CAN_FS_STOPPED), _parent(parent), _type(CAN_FT_INDIRECT), _external_handler(external_handler),
+      _next_ok_function(next_ok_function), _next_err_function(next_err_function)
 {
-    set_id(id);
-    set_parent(parent);
-    set_external_handler(external_handler);
-    set_next_ok_function(next_ok_function);
-    set_next_err_function(next_err_function);
-    set_type(CAN_FT_INDIRECT);
-    disable();
 }
 
 bool CANFunctionBase::operator==(const CANFunctionBase &other)
@@ -237,9 +232,9 @@ CANFunctionTimerBase::CANFunctionTimerBase(CAN_function_id_t id,
                                            CAN_function_handler_t external_handler,
                                            CANFunctionBase *next_ok_function,
                                            CANFunctionBase *next_err_function)
-    : CANFunctionBase(id, parent, external_handler, next_ok_function, next_err_function)
+    : CANFunctionBase(id, parent, external_handler, next_ok_function, next_err_function),
+     _period_ms(period_ms), _last_action_tick(0)
 {
-    set_period(period_ms);
     set_type(CAN_FT_AUTOMATIC);
 }
 
@@ -401,9 +396,9 @@ CAN_function_result_t CANFunctionSimpleSender::_default_handler(CANFrame *can_fr
  ******************************************************************************************************************************/
 CANFunctionSimpleEvent::CANFunctionSimpleEvent(CANObject *parent, uint32_t period_ms, CAN_function_handler_t external_handler,
                                                CANFunctionBase *next_ok_function, CANFunctionBase *next_err_function)
-    : CANFunctionBase(CAN_FUNC_EVENT_ERROR, parent, external_handler, next_ok_function, next_err_function)
+    : CANFunctionBase(CAN_FUNC_EVENT_ERROR, parent, external_handler, next_ok_function, next_err_function),
+     _period_ms(period_ms), _last_action_tick(0)
 {
-    set_period(period_ms);
     set_type(CAN_FT_AUTOMATIC);
     enable();
 }

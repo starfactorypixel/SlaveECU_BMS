@@ -10,9 +10,8 @@ CANFrame::CANFrame()
     clear_frame();
 }
 
-CANFrame::CANFrame(can_id_t id, uint8_t *data, uint8_t data_length)
+CANFrame::CANFrame(can_id_t id, uint8_t *data, uint8_t data_length) : CANFrame()
 {
-    CANFrame();
     set_frame(id, data, data_length);
 }
 
