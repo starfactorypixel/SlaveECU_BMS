@@ -88,10 +88,11 @@ protected:
 
     // derived classes may override this method in case they need do something before or
     // after external handler call
-    // if _before_external_handler() returns false then external handler will not be called
-    virtual bool _before_external_handler() { return true; };
-    // the return value of _after_external_handler() does not affect anything yet
-    virtual bool _after_external_handler() { return true; };
+    // if _before_external_handler() returns CAN_RES_NEXT_OK then external handler will be called
+    virtual CAN_function_result_t _before_external_handler(CANFrame *can_frame = nullptr) { return CAN_RES_NEXT_OK; };
+    // the return value of _after_external_handler() overwrites value, returned by the external handler
+    // if you don't want change it, just return the same value
+    virtual CAN_function_result_t _after_external_handler(CAN_function_result_t external_handler_result, CANFrame *can_frame = nullptr) { return external_handler_result; };
 
     // fills frame with correct error data
     void _fill_error_can_frame(CANFrame &can_frame, pixel_error_codes_t error_code, uint8_t additional_error_code = 0);
@@ -141,8 +142,8 @@ protected:
     // should be complement by derived class
     virtual CAN_function_result_t _timer_handler() { return CAN_RES_NONE; };
 
-    virtual bool _before_external_handler() override;
-    // virtual bool _after_external_handler() override;
+    // if _before_external_handler() returns CAN_RES_NEXT_OK then external handler will be called
+    virtual CAN_function_result_t _before_external_handler(CANFrame *can_frame = nullptr) override;
 
 private:
     uint32_t _period_ms = UINT32_MAX;
@@ -188,7 +189,7 @@ protected:
 /******************************************************************************************************************************
  *
  * CANFunctionSimpleSender: just sends the CAN frame specified in the _default_handler() parameters,
- * overrides specified in the CAN frame function ID with value, returned by get_id() 
+ * overrides specified in the CAN frame function ID with value, returned by get_id()
  * May be useful as the base class for all functions with outcoming messages. But it is very useful itself.
  *
  ******************************************************************************************************************************/
@@ -196,9 +197,9 @@ class CANFunctionSimpleSender : public CANFunctionBase
 {
 public:
     CANFunctionSimpleSender(CANObject *parent,
-                          CAN_function_handler_t external_handler = nullptr,
-                          CANFunctionBase *next_ok_function = nullptr,
-                          CANFunctionBase *next_err_function = nullptr);
+                            CAN_function_handler_t external_handler = nullptr,
+                            CANFunctionBase *next_ok_function = nullptr,
+                            CANFunctionBase *next_err_function = nullptr);
 
     virtual ~CANFunctionSimpleSender(){};
 
@@ -217,9 +218,9 @@ class CANFunctionSimpleEvent : public CANFunctionTimerBase
 {
 public:
     CANFunctionSimpleEvent(CANObject *parent, uint32_t period_ms,
-                         CAN_function_handler_t external_handler = nullptr,
-                         CANFunctionBase *next_ok_function = nullptr,
-                         CANFunctionBase *next_err_function = nullptr);
+                           CAN_function_handler_t external_handler = nullptr,
+                           CANFunctionBase *next_ok_function = nullptr,
+                           CANFunctionBase *next_err_function = nullptr);
 
     virtual ~CANFunctionSimpleEvent(){};
 
@@ -233,5 +234,33 @@ protected:
     virtual CAN_function_result_t _timer_handler() override;
 };
 
+/******************************************************************************************************************************
+ *
+ * CANFunctionSet: class for setter
+ *
+ * Probably should work only if the external handler is specified.
+ * Because setting of the variable's value is mostly hardware specific.
+ *
+ ******************************************************************************************************************************/
+class CANFunctionSet : public CANFunctionBase
+{
+public:
+    CANFunctionSet(CANObject *parent,
+                   CAN_function_handler_t external_handler = nullptr,
+                   CANFunctionBase *next_ok_function = nullptr,
+                   CANFunctionBase *next_err_function = nullptr);
+
+    virtual ~CANFunctionSet(){};
+
+protected:
+    // if _before_external_handler() returns CAN_RES_NEXT_OK then external handler will be called
+    virtual CAN_function_result_t _before_external_handler(CANFrame *can_frame = nullptr) override;
+    // the return value of _after_external_handler() overwrites value, returned by the external handler
+    // if you don't want change it, just return the same value
+    virtual CAN_function_result_t _after_external_handler(CAN_function_result_t external_handler_result, CANFrame *can_frame = nullptr) override;
+
+    // should override it with error value returned
+    virtual CAN_function_result_t _default_handler(CANFrame *can_frame = nullptr) override;
+};
 
 #endif // CANFUNCTION_H

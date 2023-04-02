@@ -170,6 +170,13 @@ enum CAN_function_state_t : uint8_t
     CAN_FS_ACTIVE = 0x01,
 };
 
+// CAN Function error codes
+enum CAN_function_error_t : uint8_t
+{
+    CAN_FUNC_ERROR_NO_EXTERNAL_HANDLER = 0x01,
+    CAN_FUNC_ERROR_UNKNOWN_SETTER_ERROR = 0x02,
+};
+
 /******************************************************************************************************************************
  *
  * Pixel related types
@@ -183,14 +190,6 @@ enum pixel_error_codes_t : uint8_t
     PIX_ERR_DATA_FIELD = 0x03,
     PIX_ERR_FUNCTION = 0x04,
     PIX_ERR_CAN_MANAGER = 0x05,
-
-    /*
-    PIX_ERR_CAN_FRAME_IS_NULL = 0x0001,
-    PIX_ERR_CAN_FRAME_ERROR = 0x0002,
-    PIX_ERR_CAN_OBJECT_DATA_FIELD_ERROR = 0x0003,
-    PIX_ERR_CAN_OBJECT_LOCAL_DATA_BUFFER_SIZE_ERROR = 0x0004,
-    PIX_ERR_CAN_OBJECT_UNKNOWN_ERROR = 0x0005,
-    */
 };
 
 #endif // CAN_COMMON_H

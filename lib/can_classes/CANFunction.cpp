@@ -118,6 +118,11 @@ CAN_function_state_t CANFunctionBase::get_state()
     return _state;
 }
 
+void CANFunctionBase::_set_state(CAN_function_state_t state)
+{
+    _state = state;
+}
+
 // function main handler
 bool CANFunctionBase::process(CANFrame *can_frame)
 {
@@ -128,9 +133,12 @@ bool CANFunctionBase::process(CANFrame *can_frame)
 
     if (has_external_handler())
     {
-        if (_before_external_handler())
+        result = _before_external_handler(can_frame);
+        if (result == CAN_RES_NEXT_OK)
+        {
             result = (get_external_handler())(*get_parent(), *this, can_frame);
-        _after_external_handler();
+            result = _after_external_handler(result, can_frame);
+        }
     }
     else
     {
@@ -201,11 +209,6 @@ bool CANFunctionBase::is_responding_by_func_id(CAN_function_id_t id)
     }
 }
 
-void CANFunctionBase::_set_state(CAN_function_state_t state)
-{
-    _state = state;
-}
-
 void CANFunctionBase::_fill_error_can_frame(CANFrame &can_frame, pixel_error_codes_t error_code, uint8_t additional_error_code)
 {
     uint8_t error_data[CAN_MAX_PAYLOAD] = {0};
@@ -270,15 +273,15 @@ CAN_function_result_t CANFunctionTimerBase::_default_handler(CANFrame *can_frame
     return CAN_RES_NONE;
 }
 
-bool CANFunctionTimerBase::_before_external_handler()
+CAN_function_result_t CANFunctionTimerBase::_before_external_handler(CANFrame *can_frame)
 {
     if (get_parent()->get_tick() - _last_action_tick >= get_period())
     {
         _last_action_tick = get_parent()->get_tick();
-        return true;
+        return CAN_RES_NEXT_OK;
     }
 
-    return false;
+    return CAN_RES_FINAL;
 }
 
 /******************************************************************************************************************************
@@ -429,4 +432,81 @@ CAN_function_result_t CANFunctionSimpleEvent::_timer_handler()
     can_manager.add_tx_queue_item(can_frame);
 
     return CAN_RES_FINAL;
+}
+
+/******************************************************************************************************************************
+ *
+ * CANFunctionSet: class for setter
+ *
+ ******************************************************************************************************************************/
+CANFunctionSet::CANFunctionSet(CANObject *parent, CAN_function_handler_t external_handler,
+                               CANFunctionBase *next_ok_function, CANFunctionBase *next_err_function)
+    : CANFunctionBase(CAN_FUNC_SET_BOOL_IN, parent, external_handler, next_ok_function, next_err_function)
+{
+    set_type(CAN_FT_RESPONDING);
+    enable();
+}
+
+// should return CAN_RES_NEXT_OK for external handler call performing
+CAN_function_result_t CANFunctionSet::_before_external_handler(CANFrame *can_frame)
+{
+    // if we are here then there is an external handler specified, all checks was performed in CANFunctionBase::process() method
+
+    if (can_frame == nullptr)
+        return CAN_RES_NEXT_ERR;
+
+    can_frame->print("CANFunctionSet [incoming frame]: ");
+
+    // TODO: for INT16/UINT16/INT32/UINT32 data length should be different!
+    // This is topic for further discussion!
+    // It is possible to determine data type by CAN frame data length.
+    if (can_frame->get_data_length() != 2) // TODO: 2 is correct for BOOL, INT8 and UINT8!
+    {
+        _fill_error_can_frame(*can_frame, PIX_ERR_CAN_FRAME, CAN_FRAME_SIZE_ERROR);
+        return CAN_RES_NEXT_ERR;
+    }
+
+    return CAN_RES_NEXT_OK;
+}
+
+// the return value of _after_external_handler() overwrites value, returned by the external handler
+// if you don't want change it, just return the same value
+CAN_function_result_t CANFunctionSet::_after_external_handler(CAN_function_result_t external_handler_result, CANFrame *can_frame)
+{
+    // can_frame was checked by _before_external_handler()... but external handler may delete it or do something another bad
+    // in this case we shouldn't return external_handler_result
+    if (can_frame == nullptr)
+        return CAN_RES_NEXT_ERR;
+
+    if (external_handler_result == CAN_RES_NEXT_OK)
+    {
+        CANObject &co = *get_parent();
+        can_object_state_t co_state = co.update_state();
+
+        if (co.is_state_ok() && co.update_local_data())
+        {
+            co.fill_can_frame_with_data(*can_frame, get_id());
+            return CAN_RES_NEXT_OK;
+        }
+        else
+        {
+            // something wrong with data update
+            external_handler_result = CAN_RES_NEXT_ERR;
+            _fill_error_can_frame(*can_frame, PIX_ERR_CAN_OBJECT, co_state);
+        }
+    }
+    else if (external_handler_result == CAN_RES_NEXT_ERR)
+    {
+        _fill_error_can_frame(*can_frame, PIX_ERR_FUNCTION, CAN_FUNC_ERROR_UNKNOWN_SETTER_ERROR);
+    }
+
+    return external_handler_result;
+}
+
+CAN_function_result_t CANFunctionSet::_default_handler(CANFrame *can_frame)
+{
+    // if the default handler is called then there is no external handler specified
+    // this is an error situation
+    _fill_error_can_frame(*can_frame, PIX_ERR_FUNCTION, CAN_FUNC_ERROR_NO_EXTERNAL_HANDLER);
+    return CAN_RES_NEXT_ERR;
 }

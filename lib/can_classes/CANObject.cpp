@@ -307,7 +307,7 @@ void CANObject::print(const char *prefix)
         LOG("%s    #%d: id = 0x%02X, state = %s", prefix, ++count,
             i->get_id(),
             (i->get_state() == CAN_FS_STOPPED) ? "stopped" : (i->get_state() == CAN_FS_ACTIVE) ? "active"
-                                                                                             : "unknown");
+                                                                                               : "unknown");
     }
 }
 
@@ -358,7 +358,19 @@ CANFunctionBase *CANObject::add_function(CAN_function_id_t id)
     switch (id)
     {
     case CAN_FUNC_SET_BOOL_IN:
+        cf = new CANFunctionSet(this);
+        // Next OK handler
+        cf->set_next_ok_function(add_function(CAN_FUNC_SET_BOOL_OUT_OK));
+        // Next Error handler
+        cf->set_next_err_function(add_function(CAN_FUNC_SET_BOOL_OUT_ERR));
+        break;
+
     case CAN_FUNC_SET_VALUE_IN:
+        cf = new CANFunctionSet(this);
+        // Next OK handler
+        cf->set_next_ok_function(add_function(CAN_FUNC_SET_VALUE_OUT_OK));
+        // Next Error handler
+        cf->set_next_err_function(add_function(CAN_FUNC_SET_VALUE_OUT_ERR));
         break;
 
     case CAN_FUNC_REQUEST_IN:
@@ -370,9 +382,23 @@ CANFunctionBase *CANObject::add_function(CAN_function_id_t id)
         break;
 
     case CAN_FUNC_SET_BOOL_OUT_OK:
+        cf = new CANFunctionSimpleSender(this);
+        cf->set_id(CAN_FUNC_SET_BOOL_OUT_OK);
+        break;
+
     case CAN_FUNC_SET_BOOL_OUT_ERR:
+        cf = new CANFunctionSimpleSender(this);
+        cf->set_id(CAN_FUNC_SET_BOOL_OUT_ERR);
+        break;
+
     case CAN_FUNC_SET_VALUE_OUT_OK:
+        cf = new CANFunctionSimpleSender(this);
+        cf->set_id(CAN_FUNC_SET_VALUE_OUT_OK);
+        break;
+
     case CAN_FUNC_SET_VALUE_OUT_ERR:
+        cf = new CANFunctionSimpleSender(this);
+        cf->set_id(CAN_FUNC_SET_VALUE_OUT_ERR);
         break;
 
     case CAN_FUNC_REQUEST_OUT_OK:
@@ -396,7 +422,7 @@ CANFunctionBase *CANObject::add_function(CAN_function_id_t id)
     case CAN_FUNC_EVENT_ERROR:
         cf = new CANFunctionSimpleEvent(this, UINT32_MAX);
         break;
-    
+
     case CAN_FUNC_NONE:
     default:
         return nullptr;
@@ -404,7 +430,7 @@ CANFunctionBase *CANObject::add_function(CAN_function_id_t id)
 
     if (cf == nullptr)
         return nullptr;
-    
+
     cf->set_parent(this);
     _functions_list.push_back(cf);
 
