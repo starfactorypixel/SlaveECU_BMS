@@ -233,7 +233,7 @@ CANFunctionTimerBase::CANFunctionTimerBase(CAN_function_id_t id,
                                            CANFunctionBase *next_ok_function,
                                            CANFunctionBase *next_err_function)
     : CANFunctionBase(id, parent, external_handler, next_ok_function, next_err_function),
-     _period_ms(period_ms), _last_action_tick(0)
+      _period_ms(period_ms), _last_action_tick(0)
 {
     set_type(CAN_FT_AUTOMATIC);
 }
@@ -394,36 +394,16 @@ CAN_function_result_t CANFunctionSimpleSender::_default_handler(CANFrame *can_fr
  * CANFunctionSimpleEvent: class for events
  *
  ******************************************************************************************************************************/
-CANFunctionSimpleEvent::CANFunctionSimpleEvent(CANObject *parent, uint32_t period_ms, CAN_function_handler_t external_handler,
+CANFunctionSimpleEvent::CANFunctionSimpleEvent(CANObject *parent, uint32_t period_ms,
+                                               CAN_function_handler_t external_handler,
                                                CANFunctionBase *next_ok_function, CANFunctionBase *next_err_function)
-    : CANFunctionBase(CAN_FUNC_EVENT_ERROR, parent, external_handler, next_ok_function, next_err_function),
-     _period_ms(period_ms), _last_action_tick(0)
+    : CANFunctionTimerBase(CAN_FUNC_EVENT_ERROR, parent, period_ms, external_handler, next_ok_function, next_err_function)
 {
-    set_type(CAN_FT_AUTOMATIC);
     enable();
 }
 
-bool CANFunctionSimpleEvent::_equals(CANFunctionBase const &other) const
-{
-    if (typeid(*this) != typeid(other))
-        return false;
-
-    auto that = static_cast<CANFunctionSimpleEvent const &>(other);
-    if (this->_period_ms != that._period_ms)
-        return false;
-    return CANFunctionBase::_equals(other);
-}
-
-void CANFunctionSimpleEvent::set_period(uint32_t period_ms)
-{
-    _period_ms = period_ms;
-}
-
-uint32_t CANFunctionSimpleEvent::get_period()
-{
-    return _period_ms;
-}
-
+// decorator for CANFunctionTimerBase::_default_handler
+// before timeout _last_action_tick update we should check if there any alarm
 CAN_function_result_t CANFunctionSimpleEvent::_default_handler(CANFrame *can_frame)
 {
     CANObject &can_object = *get_parent();
@@ -431,16 +411,12 @@ CAN_function_result_t CANFunctionSimpleEvent::_default_handler(CANFrame *can_fra
     if (!can_object.has_data_fields_alarm())
         return CAN_RES_FINAL;
 
-    if (can_object.get_tick() - _last_action_tick >= get_period())
-    {
-        _last_action_tick = can_object.get_tick();
-        return _event_handler();
-    }
-
-    return CAN_RES_NONE;
+    return CANFunctionTimerBase::_default_handler(can_frame);
 }
 
-CAN_function_result_t CANFunctionSimpleEvent::_event_handler()
+// virtual function for correct and systematic comparison of derived classes
+// should be complement by derived class
+CAN_function_result_t CANFunctionSimpleEvent::_timer_handler()
 {
     CANObject &can_object = *get_parent();
     CANFrame can_frame;

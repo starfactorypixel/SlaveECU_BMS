@@ -135,7 +135,7 @@ protected:
     // may be complement by derived class
     virtual bool _equals(CANFunctionBase const &other) const;
 
-    virtual CAN_function_result_t _default_handler(CANFrame *can_frame = nullptr) override final;
+    virtual CAN_function_result_t _default_handler(CANFrame *can_frame = nullptr) override;
 
     // virtual function for correct and systematic comparison of derived classes
     // should be complement by derived class
@@ -213,7 +213,7 @@ private:
  * CANFunctionSimpleEvent: class for events
  *
  ******************************************************************************************************************************/
-class CANFunctionSimpleEvent : public CANFunctionBase
+class CANFunctionSimpleEvent : public CANFunctionTimerBase
 {
 public:
     CANFunctionSimpleEvent(CANObject *parent, uint32_t period_ms,
@@ -223,26 +223,15 @@ public:
 
     virtual ~CANFunctionSimpleEvent(){};
 
-    void set_period(uint32_t period_ms);
-    uint32_t get_period();
-
 protected:
-    // virtual method for correct and systematic comparison of derived classes
-    // may be complement by derived class
-    virtual bool _equals(CANFunctionBase const &other) const;
-
-    virtual CAN_function_result_t _default_handler(CANFrame *can_frame = nullptr) override final;
+    // decorator for CANFunctionTimerBase::_default_handler
+    // before timeout _last_action_tick update we should check if there any alarm
+    virtual CAN_function_result_t _default_handler(CANFrame *can_frame = nullptr) override;
 
     // virtual function for correct and systematic comparison of derived classes
     // should be complement by derived class
-    virtual CAN_function_result_t _event_handler();
-
-    //virtual bool _before_external_handler() override;
-    // virtual bool _after_external_handler() override;
-
-private:
-    uint32_t _period_ms = UINT32_MAX;
-    uint32_t _last_action_tick = 0;
+    virtual CAN_function_result_t _timer_handler() override;
 };
+
 
 #endif // CANFUNCTION_H
