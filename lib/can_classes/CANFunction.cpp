@@ -186,15 +186,12 @@ bool CANFunctionBase::is_responding_by_func_id(CAN_function_id_t id)
 {
     switch (id)
     {
-    case CAN_FUNC_SET_BOOL_IN:
-    case CAN_FUNC_SET_VALUE_IN:
+    case CAN_FUNC_SET_IN:
     case CAN_FUNC_REQUEST_IN:
         return true;
 
-    case CAN_FUNC_SET_BOOL_OUT_OK:
-    case CAN_FUNC_SET_BOOL_OUT_ERR:
-    case CAN_FUNC_SET_VALUE_OUT_OK:
-    case CAN_FUNC_SET_VALUE_OUT_ERR:
+    case CAN_FUNC_SET_OUT_OK:
+    case CAN_FUNC_SET_OUT_ERR:
     case CAN_FUNC_REQUEST_OUT_OK:
     case CAN_FUNC_REQUEST_OUT_ERR:
     case CAN_FUNC_TIMER_NORMAL:
@@ -441,7 +438,7 @@ CAN_function_result_t CANFunctionSimpleEvent::_timer_handler()
  ******************************************************************************************************************************/
 CANFunctionSet::CANFunctionSet(CANObject *parent, CAN_function_handler_t external_handler,
                                CANFunctionBase *next_ok_function, CANFunctionBase *next_err_function)
-    : CANFunctionBase(CAN_FUNC_SET_BOOL_IN, parent, external_handler, next_ok_function, next_err_function)
+    : CANFunctionBase(CAN_FUNC_SET_IN, parent, external_handler, next_ok_function, next_err_function)
 {
     set_type(CAN_FT_RESPONDING);
     enable();
@@ -451,16 +448,23 @@ CANFunctionSet::CANFunctionSet(CANObject *parent, CAN_function_handler_t externa
 CAN_function_result_t CANFunctionSet::_before_external_handler(CANFrame *can_frame)
 {
     // if we are here then there is an external handler specified, all checks was performed in CANFunctionBase::process() method
-
+    // But we should check can_frame anyway because of possibility of external handler incorrect work
     if (can_frame == nullptr)
         return CAN_RES_NEXT_ERR;
 
     can_frame->print("CANFunctionSet [incoming frame]: ");
 
-    // TODO: for INT16/UINT16/INT32/UINT32 data length should be different!
-    // This is topic for further discussion!
-    // It is possible to determine data type by CAN frame data length.
-    if (can_frame->get_data_length() != 2) // TODO: 2 is correct for BOOL, INT8 and UINT8!
+    CANObject &co = *get_parent();
+    if (co.get_data_fields_count() != 1)
+    {
+        // only objects with exactly one data field are writable
+        _fill_error_can_frame(*can_frame, PIX_ERR_FUNCTION, CAN_FUNC_ERROR_READONLY_OBJECT);
+        return CAN_RES_NEXT_ERR;
+    }
+
+    DataField *df = co.get_data_field(0);
+
+    if (can_frame->get_data_length() != df->get_data_byte_array_length() + 1)
     {
         _fill_error_can_frame(*can_frame, PIX_ERR_CAN_FRAME, CAN_FRAME_SIZE_ERROR);
         return CAN_RES_NEXT_ERR;

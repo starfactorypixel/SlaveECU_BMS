@@ -357,20 +357,12 @@ CANFunctionBase *CANObject::add_function(CAN_function_id_t id)
     CANFunctionBase *cf = nullptr;
     switch (id)
     {
-    case CAN_FUNC_SET_BOOL_IN:
+    case CAN_FUNC_SET_IN:
         cf = new CANFunctionSet(this);
         // Next OK handler
-        cf->set_next_ok_function(add_function(CAN_FUNC_SET_BOOL_OUT_OK));
+        cf->set_next_ok_function(add_function(CAN_FUNC_SET_OUT_OK));
         // Next Error handler
-        cf->set_next_err_function(add_function(CAN_FUNC_SET_BOOL_OUT_ERR));
-        break;
-
-    case CAN_FUNC_SET_VALUE_IN:
-        cf = new CANFunctionSet(this);
-        // Next OK handler
-        cf->set_next_ok_function(add_function(CAN_FUNC_SET_VALUE_OUT_OK));
-        // Next Error handler
-        cf->set_next_err_function(add_function(CAN_FUNC_SET_VALUE_OUT_ERR));
+        cf->set_next_err_function(add_function(CAN_FUNC_SET_OUT_ERR));
         break;
 
     case CAN_FUNC_REQUEST_IN:
@@ -381,24 +373,14 @@ CANFunctionBase *CANObject::add_function(CAN_function_id_t id)
         cf->set_next_err_function(add_function(CAN_FUNC_REQUEST_OUT_ERR));
         break;
 
-    case CAN_FUNC_SET_BOOL_OUT_OK:
+    case CAN_FUNC_SET_OUT_OK:
         cf = new CANFunctionSimpleSender(this);
-        cf->set_id(CAN_FUNC_SET_BOOL_OUT_OK);
+        cf->set_id(CAN_FUNC_SET_OUT_OK);
         break;
 
-    case CAN_FUNC_SET_BOOL_OUT_ERR:
+    case CAN_FUNC_SET_OUT_ERR:
         cf = new CANFunctionSimpleSender(this);
-        cf->set_id(CAN_FUNC_SET_BOOL_OUT_ERR);
-        break;
-
-    case CAN_FUNC_SET_VALUE_OUT_OK:
-        cf = new CANFunctionSimpleSender(this);
-        cf->set_id(CAN_FUNC_SET_VALUE_OUT_OK);
-        break;
-
-    case CAN_FUNC_SET_VALUE_OUT_ERR:
-        cf = new CANFunctionSimpleSender(this);
-        cf->set_id(CAN_FUNC_SET_VALUE_OUT_ERR);
+        cf->set_id(CAN_FUNC_SET_OUT_ERR);
         break;
 
     case CAN_FUNC_REQUEST_OUT_OK:

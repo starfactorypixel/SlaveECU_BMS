@@ -22,17 +22,16 @@ using get_ms_tick_function_t = uint32_t (*)();
 union data_mapper_t
 {
     uint8_t u8arr[4];
-    int8_t  i8arr[4];
+    int8_t i8arr[4];
     uint8_t u8;
-    int8_t  i8;
+    int8_t i8;
     uint16_t u16arr[2];
-    int16_t  i16arr[2];
+    int16_t i16arr[2];
     uint16_t u16;
-    int16_t  i16;
+    int16_t i16;
     uint32_t u32;
-    int32_t  i32;
+    int32_t i32;
 };
-
 
 enum data_field_t : uint8_t
 {
@@ -123,13 +122,9 @@ enum CAN_function_id_t : uint8_t
 {
     CAN_FUNC_NONE = 0x00,
 
-    CAN_FUNC_SET_BOOL_IN = 0x01,
-    CAN_FUNC_SET_BOOL_OUT_OK = 0x41,
-    CAN_FUNC_SET_BOOL_OUT_ERR = 0xC1,
-
-    CAN_FUNC_SET_VALUE_IN = 0x02,
-    CAN_FUNC_SET_VALUE_OUT_OK = 0x42,
-    CAN_FUNC_SET_VALUE_OUT_ERR = 0xC2,
+    CAN_FUNC_SET_IN = 0x01,
+    CAN_FUNC_SET_OUT_OK = 0x41,
+    CAN_FUNC_SET_OUT_ERR = 0xC1,
 
     CAN_FUNC_REQUEST_IN = 0x11,
     CAN_FUNC_REQUEST_OUT_OK = 0x51,
@@ -175,6 +170,7 @@ enum CAN_function_error_t : uint8_t
 {
     CAN_FUNC_ERROR_NO_EXTERNAL_HANDLER = 0x01,
     CAN_FUNC_ERROR_UNKNOWN_SETTER_ERROR = 0x02,
+    CAN_FUNC_ERROR_READONLY_OBJECT = 0x03, // only objects with exactly one data field are writable
 };
 
 /******************************************************************************************************************************

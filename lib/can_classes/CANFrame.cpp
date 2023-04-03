@@ -110,7 +110,7 @@ void CANFrame::set_function_id(CAN_function_id_t id)
 {
     if (!has_data())
         return;
-    
+
     get_data_pointer()[0] = id;
 }
 
@@ -182,28 +182,16 @@ void CANFrame::_frame_func_to_string(char *dest_string)
         strcpy(dest_string, "CAN_FUNC_NONE");
         break;
 
-    case CAN_FUNC_SET_BOOL_IN:
-        strcpy(dest_string, "CAN_FUNC_SET_BOOL_IN");
+    case CAN_FUNC_SET_IN:
+        strcpy(dest_string, "CAN_FUNC_SET_IN");
         break;
 
-    case CAN_FUNC_SET_BOOL_OUT_OK:
-        strcpy(dest_string, "CAN_FUNC_SET_BOOL_OUT_OK");
+    case CAN_FUNC_SET_OUT_OK:
+        strcpy(dest_string, "CAN_FUNC_SET_OUT_OK");
         break;
 
-    case CAN_FUNC_SET_BOOL_OUT_ERR:
-        strcpy(dest_string, "CAN_FUNC_SET_BOOL_OUT_ERR");
-        break;
-
-    case CAN_FUNC_SET_VALUE_IN:
-        strcpy(dest_string, "CAN_FUNC_SET_VALUE_IN");
-        break;
-
-    case CAN_FUNC_SET_VALUE_OUT_OK:
-        strcpy(dest_string, "CAN_FUNC_SET_VALUE_OUT_OK");
-        break;
-
-    case CAN_FUNC_SET_VALUE_OUT_ERR:
-        strcpy(dest_string, "CAN_FUNC_SET_VALUE_OUT_ERR");
+    case CAN_FUNC_SET_OUT_ERR:
+        strcpy(dest_string, "CAN_FUNC_SET_OUT_ERR");
         break;
 
     case CAN_FUNC_REQUEST_IN:
