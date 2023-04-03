@@ -4,6 +4,7 @@
 
 #include <stdint.h>
 
+#include "logger.h"
 #include "CAN_common.h"
 #include "CANObject.h"
 
@@ -22,12 +23,12 @@ public:
                     CAN_function_handler_t external_handler = nullptr,
                     CANFunctionBase *next_ok_function = nullptr,
                     CANFunctionBase *next_err_function = nullptr);
-    virtual ~CANFunctionBase(){};
+    virtual ~CANFunctionBase();
 
     bool operator==(const CANFunctionBase &other);
     bool operator!=(const CANFunctionBase &other);
 
-    void set_id(CAN_function_id_t id);
+    void set_id(CAN_function_id_t id, const char *name = nullptr);
     CAN_function_id_t get_id();
 
     void set_parent(CANObject *parent);
@@ -57,6 +58,12 @@ public:
     void enable();
     bool is_active();
     CAN_function_state_t get_state();
+    const char *get_state_name();
+
+    const char *get_name();
+    void set_name(const char *name);
+    bool has_name();
+    void delete_name();
 
     // function main handler
     bool process(CANFrame *can_frame = nullptr);
@@ -71,8 +78,11 @@ public:
     bool is_indirect_function();
     void set_type(CAN_function_type_t func_type);
     CAN_function_type_t get_type();
+    const char *get_type_name();
 
     static bool is_responding_by_func_id(CAN_function_id_t id);
+
+    virtual void print(const char *prefix);
 
 protected:
     void _set_state(CAN_function_state_t state);
@@ -111,6 +121,20 @@ private:
     CANFunctionBase *_next_ok_function = nullptr;
     // the next function is for the case when function handler returned false
     CANFunctionBase *_next_err_function = nullptr;
+
+    // function name for logging
+    char *_name = nullptr;
+
+    // 'unknown' for logging
+    static const char *_value_unknown;
+    // the function state names for logging
+    static const char *_state_function_stopped;
+    static const char *_state_function_active;
+    // the function type names for logging
+    static const char *_type_function_responding;
+    static const char *_type_function_automatic;
+    static const char *_type_function_blended;
+    static const char *_type_function_indirect;
 };
 
 /******************************************************************************************************************************

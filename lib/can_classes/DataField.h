@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "logger.h"
 #include "CAN_common.h"
 
 /******************************************************************************************************************************
@@ -37,6 +38,8 @@ public:
     bool has_alarm_state();
 
     data_field_t get_source_type();
+    const char *get_source_type_name();
+
     uint32_t get_item_count();
     uint8_t get_item_size();
     void *get_src_pointer();
@@ -49,6 +52,9 @@ public:
     void set_state(data_field_state_t state);
     data_field_state_t update_state();
     bool has_errors();
+    const char *get_state_name();
+
+    void print(const char *prefix);
 
 private:
     // use it with caution! it is unsafe! risk of memory leak!
@@ -66,6 +72,21 @@ private:
     // checker properties
     data_mapper_t _checker_min;
     data_mapper_t _checker_max;
+
+    // 'unknown' for logging
+    static const char *_value_unknown;
+    // the data field source type names for logging
+    static const char *_source_type_int8;
+    static const char *_source_type_uint8;
+    static const char *_source_type_int16;
+    static const char *_source_type_uint16;
+    static const char *_source_type_int32;
+    static const char *_source_type_uint32;
+
+    // the data field state names for logging
+    static const char *_state_data_field_ok;
+    static const char *_state_data_field_alarm;
+    static const char *_state_data_field_error;
 };
 
 #endif // DATAFIELD_H

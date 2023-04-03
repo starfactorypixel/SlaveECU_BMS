@@ -5,14 +5,28 @@
  * CANFunction base class: base class for all CAN functions
  *
  ******************************************************************************************************************************/
+const char *CANFunctionBase::_state_function_stopped = "stopped";
+const char *CANFunctionBase::_state_function_active = "active";
+const char *CANFunctionBase::_value_unknown = "unknown";
+
+const char *CANFunctionBase::_type_function_responding = "responding";
+const char *CANFunctionBase::_type_function_automatic = "automatic";
+const char *CANFunctionBase::_type_function_blended = "blended";
+const char *CANFunctionBase::_type_function_indirect = "indirect";
+
 CANFunctionBase::CANFunctionBase(CAN_function_id_t id,
                                  CANObject *parent,
                                  CAN_function_handler_t external_handler,
                                  CANFunctionBase *next_ok_function,
                                  CANFunctionBase *next_err_function)
     : _id(id), _state(CAN_FS_STOPPED), _parent(parent), _type(CAN_FT_INDIRECT), _external_handler(external_handler),
-      _next_ok_function(next_ok_function), _next_err_function(next_err_function)
+      _next_ok_function(next_ok_function), _next_err_function(next_err_function), _name(nullptr)
 {
+}
+
+CANFunctionBase::~CANFunctionBase()
+{
+    delete_name();
 }
 
 bool CANFunctionBase::operator==(const CANFunctionBase &other)
@@ -33,9 +47,10 @@ bool CANFunctionBase::_equals(CANFunctionBase const &other) const
     return (this->_id == other._id);
 }
 
-void CANFunctionBase::set_id(CAN_function_id_t id)
+void CANFunctionBase::set_id(CAN_function_id_t id, const char *name)
 {
     _id = id;
+    set_name(name);
 }
 
 CAN_function_id_t CANFunctionBase::get_id()
@@ -118,6 +133,46 @@ CAN_function_state_t CANFunctionBase::get_state()
     return _state;
 }
 
+const char *CANFunctionBase::get_state_name()
+{
+    switch (get_state())
+    {
+    case CAN_FS_STOPPED:
+        return _state_function_stopped;
+
+    case CAN_FS_ACTIVE:
+        return _state_function_active;
+
+    default:
+        return _value_unknown;
+    }
+}
+
+const char *CANFunctionBase::get_name()
+{
+    return _name;
+}
+
+void CANFunctionBase::set_name(const char *name)
+{
+    if (name == nullptr)
+        return;
+
+    _name = new char[strlen(name) + 1];
+    strcpy(_name, name);
+}
+
+bool CANFunctionBase::has_name()
+{
+    return get_name() != nullptr;
+}
+
+void CANFunctionBase::delete_name()
+{
+    if (has_name())
+        delete[] _name;
+}
+
 void CANFunctionBase::_set_state(CAN_function_state_t state)
 {
     _state = state;
@@ -182,6 +237,27 @@ CAN_function_type_t CANFunctionBase::get_type()
     return _type;
 }
 
+const char *CANFunctionBase::get_type_name()
+{
+    switch (get_type())
+    {
+    case CAN_FT_RESPONDING:
+        return _type_function_responding;
+
+    case CAN_FT_AUTOMATIC:
+        return _type_function_automatic;
+
+    case CAN_FT_BLENDED:
+        return _type_function_blended;
+
+    case CAN_FT_INDIRECT:
+        return _type_function_indirect;
+
+    default:
+        return _value_unknown;
+    }
+}
+
 bool CANFunctionBase::is_responding_by_func_id(CAN_function_id_t id)
 {
     switch (id)
@@ -204,6 +280,12 @@ bool CANFunctionBase::is_responding_by_func_id(CAN_function_id_t id)
     default:
         return false;
     }
+}
+
+void CANFunctionBase::print(const char *prefix)
+{
+    LOG("%sFunction: id = 0x%02X (%s), type = %s, state = %s", prefix, get_id(),
+        has_name() ? get_name() : "noname", get_type_name(), get_state_name());
 }
 
 void CANFunctionBase::_fill_error_can_frame(CANFrame &can_frame, pixel_error_codes_t error_code, uint8_t additional_error_code)
@@ -290,6 +372,7 @@ CANFunctionTimerNormal::CANFunctionTimerNormal(CANObject *parent, uint32_t perio
                                                CANFunctionBase *next_ok_function, CANFunctionBase *next_err_function)
     : CANFunctionTimerBase(CAN_FUNC_TIMER_NORMAL, parent, period_ms, external_handler, next_ok_function, next_err_function)
 {
+    set_name("CANFunctionTimerNormal");
     enable();
 }
 
@@ -317,6 +400,7 @@ CANFunctionRequest::CANFunctionRequest(CANObject *parent, CAN_function_handler_t
     : CANFunctionBase(CAN_FUNC_REQUEST_IN, parent, external_handler, next_ok_function, next_err_function)
 {
     set_type(CAN_FT_RESPONDING);
+    set_name("CANFunctionRequest");
     enable();
 }
 
@@ -360,6 +444,7 @@ CANFunctionSimpleSender::CANFunctionSimpleSender(CANObject *parent, CAN_function
     : CANFunctionBase(CAN_FUNC_SIMPLE_SENDER, parent, external_handler, next_ok_function, next_err_function)
 {
     set_type(CAN_FT_INDIRECT);
+    set_name("CANFunctionSimpleSender");
     enable();
 }
 
@@ -399,6 +484,7 @@ CANFunctionSimpleEvent::CANFunctionSimpleEvent(CANObject *parent, uint32_t perio
                                                CANFunctionBase *next_ok_function, CANFunctionBase *next_err_function)
     : CANFunctionTimerBase(CAN_FUNC_EVENT_ERROR, parent, period_ms, external_handler, next_ok_function, next_err_function)
 {
+    set_name("CANFunctionSimpleEvent");
     enable();
 }
 
@@ -441,6 +527,7 @@ CANFunctionSet::CANFunctionSet(CANObject *parent, CAN_function_handler_t externa
     : CANFunctionBase(CAN_FUNC_SET_IN, parent, external_handler, next_ok_function, next_err_function)
 {
     set_type(CAN_FT_RESPONDING);
+    set_name("CANFunctionSet");
     enable();
 }
 

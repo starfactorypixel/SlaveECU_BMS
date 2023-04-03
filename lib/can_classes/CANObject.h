@@ -24,13 +24,13 @@ class CANObject
 {
 public:
     CANObject();
-    CANObject(uint16_t id, CANManager &parent);
+    CANObject(uint16_t id, CANManager &parent, const char *name = nullptr);
     ~CANObject();
 
     bool operator==(const CANObject &frame);
 
     can_id_t get_id();
-    void set_id(can_id_t id);
+    void set_id(can_id_t id, const char *name = nullptr);
 
     CANManager *get_parent();
     void set_parent(CANManager &parent);
@@ -49,29 +49,30 @@ public:
     uint8_t calculate_all_data_size();
 
     can_object_state_t get_state();
+    const char *get_state_name();
     bool is_state_ok();
     DataField *get_first_erroneous_data_field();
 
     // if function already exists and it has responding or blended type then existing one will be returned
     // for automatic and indirect functions there are no such limitations
     CANFunctionBase *add_function(CAN_function_id_t id);
-    /*
-    CANFunctionBase *add_custom_function(CANFunctionBase &can_function);
-    CANFunctionBase *add_normal_timer_function(uint32_t period_ms);
-    CANFunctionBase *add_request_function();
-    */
     CANFunctionBase *get_function(CAN_function_id_t func_id);
     CANFunctionBase *get_function(CANFunctionBase &function);
     bool has_function(CAN_function_id_t func_id);
     bool has_function(CANFunctionBase &function);
     uint8_t get_functions_count();
 
+    const char *get_name();
+    void set_name(const char *name);
+    bool has_name();
+    void delete_name();
+
     // only updates states of data fields and transfer CANObject in error state if there is at least one erroneous DataField
     can_object_state_t update_state();
     // updates local data storage, performs active and automatic/blended functions calls
     bool update();
     // updates local data storage only
-    bool update_local_data(); 
+    bool update_local_data();
 
     void print(const char *prefix);
 
@@ -100,6 +101,17 @@ private:
     std::list<CANFunctionBase *> _functions_list;
 
     uint8_t *_data_local = nullptr;
+
+    // object name for logging
+    char *_name = nullptr;
+
+    // 'unknown' for logging
+    static const char *_value_unknown;
+    // the object state names for logging
+    static const char *_state_object_ok;
+    static const char *_state_data_field_error;
+    static const char *_state_local_data_buffer_size_error;
+    static const char *_state_unknown_error;
 };
 
 #endif // CANOBJECT_H

@@ -46,7 +46,7 @@ public:
     virtual uint8_t get_can_objects_count() = 0;
     virtual bool has_can_objects() = 0;
     virtual bool has_can_object(can_id_t id) = 0;
-    virtual CANObject *add_can_object(can_id_t id) = 0;
+    virtual CANObject *add_can_object(can_id_t id, const char *name = nullptr) = 0;
     virtual CANObject *get_can_object_by_index(uint8_t index) = 0;
     virtual CANObject *get_can_object_by_can_id(can_id_t id) = 0;
     virtual bool delete_can_object(can_id_t id) = 0;
@@ -88,7 +88,7 @@ public:
     uint8_t get_can_objects_count() override;
     bool has_can_objects() override;
     bool has_can_object(can_id_t id) override;
-    CANObject *add_can_object(can_id_t id) override;
+    CANObject *add_can_object(can_id_t id, const char *name = nullptr) override;
     CANObject *get_can_object_by_index(uint8_t index) override;
     CANObject *get_can_object_by_can_id(can_id_t id) override;
     bool delete_can_object(can_id_t id) override;

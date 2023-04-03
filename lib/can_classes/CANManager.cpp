@@ -71,15 +71,14 @@ void CANManager::print(const char *prefix)
     LOG("%sCAN Manager data", prefix);
 
     // print CANObject data
-    LOG("%sCAN Objects:", prefix);
+    LOG("%s  CAN Objects:", prefix);
     for (CANObject &i : _can_objects_list)
     {
-        sprintf(str, "%s    0x%04X: ", prefix, i.get_id());
-        i.print(str);
+        i.print("  ");
     }
 
     // print RX queue items
-    LOG("%sRX queue:", prefix);
+    LOG("%s  RX queue:", prefix);
     uint16_t queue_item_counter = 0;
     std::queue<CANFrame> temp = _rx_frame_queue;
     while (!temp.empty())
@@ -95,7 +94,7 @@ void CANManager::print(const char *prefix)
     }
 
     // print TX queue items
-    LOG("%sTX queue:", prefix);
+    LOG("%s  TX queue:", prefix);
     queue_item_counter = 0;
     temp = _tx_frame_queue;
     while (!temp.empty())
@@ -218,7 +217,7 @@ uint8_t CANManager::get_can_objects_count()
     return _can_objects_list.size();
 }
 
-CANObject *CANManager::add_can_object(can_id_t id)
+CANObject *CANManager::add_can_object(can_id_t id, const char *name)
 {
     CANObject *new_can_object = get_can_object_by_can_id(id);
 
@@ -226,12 +225,19 @@ CANObject *CANManager::add_can_object(can_id_t id)
         return new_can_object;
 
     CANObject co;
-    co.set_parent(*this);
-    co.set_id(id);
-    co.update_state();
     _can_objects_list.push_back(co);
 
-    return &_can_objects_list.back();
+    CANObject *pco = &_can_objects_list.back();
+    pco->set_id(id);
+    pco->set_parent(*this);
+    pco->update_state();
+    // TODO: we are setting name here because in CANObject name is dynamic char array and it will not be copied due the insertion into the list.
+    // The other one member with the same problem is CANObject::_functions_list because it stores pointers.
+    // It can be fixed by implementation of a copy constructor and operator= (assignment). It may be done later if we will need it.
+    // Other class members are correctly copied by default stuff
+    pco->set_name(name);
+
+    return pco;
 }
 
 CANObject *CANManager::get_can_object_by_index(uint8_t index)

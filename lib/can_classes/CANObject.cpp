@@ -5,22 +5,22 @@
  * CANObject class: CAN data object with ID and several DataFields
  *
  ******************************************************************************************************************************/
-CANObject::CANObject()
-{
-    _id = 0;
-    _parent = nullptr;
+const char *CANObject::_value_unknown = "unknown";
+const char *CANObject::_state_object_ok = "ok";
+const char *CANObject::_state_data_field_error = "data field error";
+const char *CANObject::_state_local_data_buffer_size_error = "local data buffer size error";
+const char *CANObject::_state_unknown_error = "unknown error";
 
+CANObject::CANObject()
+    : _id(0), _parent(nullptr), _state(COS_UNKNOWN_ERROR), _data_local(nullptr), _name(nullptr)
+{
     _data_fields_list.clear();
     _functions_list.clear();
-
-    _data_local = nullptr;
-
-    _state = COS_UNKNOWN_ERROR;
 }
 
-CANObject::CANObject(uint16_t id, CANManager &parent) : CANObject()
+CANObject::CANObject(uint16_t id, CANManager &parent, const char *name) : CANObject()
 {
-    set_id(id);
+    set_id(id, name);
     set_parent(parent);
     _set_state(COS_OK);
 }
@@ -35,6 +35,7 @@ CANObject::~CANObject()
     }
     _functions_list.clear();
     _delete_data_local();
+    delete_name();
 }
 
 bool CANObject::operator==(const CANObject &can_object)
@@ -47,9 +48,10 @@ can_id_t CANObject::get_id()
     return _id;
 }
 
-void CANObject::set_id(can_id_t id)
+void CANObject::set_id(can_id_t id, const char *name)
 {
     _id = id;
+    set_name(name);
 }
 
 CANManager *CANObject::get_parent()
@@ -193,6 +195,27 @@ can_object_state_t CANObject::get_state()
     return _state;
 }
 
+const char *CANObject::get_state_name()
+{
+    switch (get_state())
+    {
+    case COS_OK:
+        return _state_object_ok;
+
+    case COS_DATA_FIELD_ERROR:
+        return _state_data_field_error;
+
+    case COS_LOCAL_DATA_BUFFER_SIZE_ERROR:
+        return _state_local_data_buffer_size_error;
+
+    case COS_UNKNOWN_ERROR:
+        return _state_unknown_error;
+
+    default:
+        return _value_unknown;
+    }
+}
+
 bool CANObject::is_state_ok()
 {
     return get_state() == COS_OK;
@@ -201,6 +224,31 @@ bool CANObject::is_state_ok()
 void CANObject::_set_state(can_object_state_t state)
 {
     _state = state;
+}
+
+const char *CANObject::get_name()
+{
+    return _name;
+}
+
+void CANObject::set_name(const char *name)
+{
+    if (name == nullptr)
+        return;
+
+    _name = new char[strlen(name) + 1];
+    strcpy(_name, name);
+}
+
+bool CANObject::has_name()
+{
+    return get_name() != nullptr;
+}
+
+void CANObject::delete_name()
+{
+    if (has_name())
+        delete[] _name;
 }
 
 // only updates states of data fields and transfer CANObject in error state if there is at least one erroneous DataField
@@ -265,49 +313,25 @@ bool CANObject::update_local_data()
 
 void CANObject::print(const char *prefix)
 {
-    char str_buff[70] = {0};
-    switch (get_state())
-    {
-    case COS_OK:
-        strcpy(str_buff, "COS_OK");
-        break;
+    LOG("%sCAN object: id = 0x%04X (%s), state = %s, num of fields = %d", prefix, get_id(),
+        has_name() ? get_name() : _value_unknown, get_state_name(), get_data_fields_count());
 
-    case COS_DATA_FIELD_ERROR:
-        strcpy(str_buff, "COS_DATA_FIELD_ERROR");
-        break;
-
-    case COS_LOCAL_DATA_BUFFER_SIZE_ERROR:
-        strcpy(str_buff, "COS_LOCAL_DATA_BUFFER_SIZE_ERROR");
-        break;
-
-    case COS_UNKNOWN_ERROR:
-        strcpy(str_buff, "COS_UNKNOWN_ERROR");
-        break;
-
-    default:
-        break;
-    }
-
-    LOG("%sCAN object 0x%04X: state = %s, num of fields = %d", prefix, get_id(), str_buff, get_data_fields_count());
-
-    LOG("%sData fields: %s", prefix, _data_fields_list.empty() ? "no data fields" : "");
     uint8_t count = 0;
+    char str_buff[70] = {0};
+
+    LOG("%s    Data fields: %s", prefix, _data_fields_list.empty() ? "no data fields" : "");
     for (DataField &i : _data_fields_list)
     {
-        LOG("%s    #%d: state = %s, item size = %d, item count = %d", prefix, ++count,
-            (i.get_state() == DFS_OK) ? "DFS_OK" : "DFS_ERROR",
-            i.get_item_size(),
-            i.get_item_count());
+        sprintf(str_buff, "%s        #%d ", prefix, ++count);
+        i.print(str_buff);
     }
 
-    LOG("%sFunctions: %s", prefix, _functions_list.empty() ? "no functions" : "");
+    LOG("%s    Functions: %s", prefix, _functions_list.empty() ? "no functions" : "");
     count = 0;
     for (CANFunctionBase *i : _functions_list)
     {
-        LOG("%s    #%d: id = 0x%02X, state = %s", prefix, ++count,
-            i->get_id(),
-            (i->get_state() == CAN_FS_STOPPED) ? "stopped" : (i->get_state() == CAN_FS_ACTIVE) ? "active"
-                                                                                               : "unknown");
+        sprintf(str_buff, "%s        #%d ", prefix, ++count);
+        i->print(str_buff);
     }
 }
 
@@ -375,22 +399,22 @@ CANFunctionBase *CANObject::add_function(CAN_function_id_t id)
 
     case CAN_FUNC_SET_OUT_OK:
         cf = new CANFunctionSimpleSender(this);
-        cf->set_id(CAN_FUNC_SET_OUT_OK);
+        cf->set_id(CAN_FUNC_SET_OUT_OK, "CANFunctionSimpleSender|set-ok");
         break;
 
     case CAN_FUNC_SET_OUT_ERR:
         cf = new CANFunctionSimpleSender(this);
-        cf->set_id(CAN_FUNC_SET_OUT_ERR);
+        cf->set_id(CAN_FUNC_SET_OUT_ERR, "CANFunctionSimpleSender|set-error");
         break;
 
     case CAN_FUNC_REQUEST_OUT_OK:
         cf = new CANFunctionSimpleSender(this);
-        cf->set_id(CAN_FUNC_REQUEST_OUT_OK);
+        cf->set_id(CAN_FUNC_REQUEST_OUT_OK, "CANFunctionSimpleSender|request-ok");
         break;
 
     case CAN_FUNC_REQUEST_OUT_ERR:
         cf = new CANFunctionSimpleSender(this);
-        cf->set_id(CAN_FUNC_REQUEST_OUT_ERR);
+        cf->set_id(CAN_FUNC_REQUEST_OUT_ERR, "CANFunctionSimpleSender|request-error");
         break;
 
     case CAN_FUNC_TIMER_NORMAL:

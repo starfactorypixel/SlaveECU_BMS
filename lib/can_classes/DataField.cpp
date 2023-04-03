@@ -5,6 +5,21 @@
  * DataField class: keep the data pointer, data type and data size of the data source
  *
  ******************************************************************************************************************************/
+// 'unknown' for logging
+const char *DataField::_value_unknown = "unknown";
+// the data field source type names for logging
+const char *DataField::_source_type_int8 = "int8";
+const char *DataField::_source_type_uint8 = "uint8";
+const char *DataField::_source_type_int16 = "int16";
+const char *DataField::_source_type_uint16 = "uint16";
+const char *DataField::_source_type_int32 = "int32";
+const char *DataField::_source_type_uint32 = "uint32";
+
+// the data field state names for logging
+const char *DataField::_state_data_field_ok = "ok";
+const char *DataField::_state_data_field_alarm = "alarm";
+const char *DataField::_state_data_field_error = "error";
+
 DataField::DataField()
 {
     _zerroing_all_unsafe();
@@ -245,6 +260,34 @@ data_field_t DataField::get_source_type()
     return _source_type;
 }
 
+const char *DataField::get_source_type_name()
+{
+    switch (get_source_type())
+    {
+    case DF_INT8:
+        return _source_type_int8;
+
+    case DF_UINT8:
+        return _source_type_uint8;
+
+    case DF_INT16:
+        return _source_type_int16;
+
+    case DF_UINT16:
+        return _source_type_uint16;
+
+    case DF_INT32:
+        return _source_type_int32;
+
+    case DF_UINT32:
+        return _source_type_uint32;
+
+    case DF_UNKNOWN:
+    default:
+        return _value_unknown;
+    }
+}
+
 uint32_t DataField::get_item_count()
 {
     return _array_item_count;
@@ -309,4 +352,28 @@ data_field_state_t DataField::update_state()
 bool DataField::has_errors()
 {
     return get_state() == DFS_ERROR;
+}
+
+const char *DataField::get_state_name()
+{
+    switch (get_state())
+    {
+    case DFS_OK:
+        return _state_data_field_ok;
+
+    case DFS_ALARM:
+        return _state_data_field_alarm;
+
+    case DFS_ERROR:
+        return _state_data_field_error;
+
+    default:
+        return _value_unknown;
+    }
+}
+
+void DataField::print(const char *prefix)
+{
+    LOG("%sDataField: state = %s, item size = %d (%s), item count = %d", prefix, get_state_name(),
+        get_item_size(), get_source_type_name(), get_item_count());
 }

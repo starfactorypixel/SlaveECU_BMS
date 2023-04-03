@@ -53,7 +53,6 @@ protected:
     uint8_t _data_length = 0;
 
     bool _is_initialized = false;
-    
 };
 
 #endif // CANFRAME_H
