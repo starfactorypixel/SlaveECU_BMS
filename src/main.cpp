@@ -148,7 +148,8 @@ void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
   uint8_t RxData[8] = {0};
   if (HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO1, &RxHeader, RxData) == HAL_OK)
   {
-    can_manager.take_new_rx_frame(RxHeader, RxData);
+    CANFrame new_frame(RxHeader.StdId, &RxData[0], RxHeader.DLC);
+    can_manager.take_new_rx_frame(new_frame);
 
 #ifdef DEBUG
     sprintf(str1, "CAN 0x%04lX", RxHeader.StdId);
