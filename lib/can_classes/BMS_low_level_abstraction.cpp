@@ -60,41 +60,22 @@ bool init_can_manager_for_bms(CANManager &cm, bms_can_data_t &bms_can_data)
     // 0x0040	BlockInfo
     // request | timer:15000	byte	1 + 7	{ type[0] data[1..7] }
     // Основная информация о блоке. См. "Системные параметры".
-    co = cm.add_can_object(BMS_CANO_ID_BLOCK_INFO, "BlockInfo");
-    df = co->add_data_field(DF_UINT8, &bms_can_data.block_info.board_data_byte);
-    df = co->add_data_field(DF_UINT8, &bms_can_data.block_info.software_data_byte);
-    func_request = (CANFunctionRequest *)co->add_function(CAN_FUNC_REQUEST_IN);
-    func_timer_norm = (CANFunctionTimerNormal *)co->add_function(CAN_FUNC_TIMER_NORMAL);
-    func_timer_norm->set_period(15000);
+    init_block_info(cm, BMS_CANO_ID_BLOCK_INFO, bms_can_data.block_info);
 
     // 0x0041	BlockHealth
     // request | event	UINT32	1 + 7	{ type[0] data[1..7] }
     // Информация о здоровье блока. См. "Системные параметры".
-    co = cm.add_can_object(BMS_CANO_ID_BLOCK_HEALTH, "BlockHealth");
-    df = co->add_data_field(DF_UINT16, &bms_can_data.block_health.voltage);
-    df = co->add_data_field(DF_INT16, &bms_can_data.block_health.current);
-    min_val.i16 = -500;
-    max_val.i16 = 500;
-    df->set_alarm_checker(min_val, max_val);
-    df = co->add_data_field(DF_INT8, &bms_can_data.block_health.temperature);
-    func_request = (CANFunctionRequest *)co->add_function(CAN_FUNC_REQUEST_IN);
-    func_event = (CANFunctionSimpleEvent *)co->add_function(CAN_FUNC_EVENT_ERROR);
-    func_event->set_period(3000);
+    init_block_health(cm, BMS_CANO_ID_BLOCK_HEALTH, bms_can_data.block_health);
 
     // 0x0042	BlockCfg
     // request	byte	1 + 1 + X	{ type[0] param[1] data[2..7] }
     // Чтение и запись настроек блока. См. "Системные параметры".
-    co = cm.add_can_object(BMS_CANO_ID_BLOCK_CFG, "BlockCfg");
-    // df = co->add_data_field(DF_UINT8, ??, ??);    // byte 1
-    // df = co->add_data_field(DF_UINT8, ??, 6);
-    func_request = (CANFunctionRequest *)co->add_function(CAN_FUNC_REQUEST_IN);
+    init_block_cfg(cm, BMS_CANO_ID_BLOCK_CFG, bms_can_data.block_cfg);
 
     // 0x0043	BlockError
     // request | event	byte	1 + X	{ type[0] data[1..7] }
     // Ошибки блока. См. "Системные параметры".
-    co = cm.add_can_object(BMS_CANO_ID_BLOCK_ERROR, "BlockError");
-    df = co->add_data_field(DF_UINT8, &bms_can_data.block_error.code);
-    func_request = (CANFunctionRequest *)co->add_function(CAN_FUNC_REQUEST_IN);
+    init_block_error(cm, BMS_CANO_ID_BLOCK_ERROR, bms_can_data.block_error);
 
     // 0x0044	HighVoltage
     // request | timer:1000	uint32_t	1 + 4	{ type[0] data[1..4] }
