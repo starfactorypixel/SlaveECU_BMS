@@ -6,8 +6,7 @@
 #include <assert.h>
 #include <cstring>
 
-#include "CANManager.h"
-#include "CANFunction.h"
+#include "CANLibrary.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -99,122 +98,16 @@ extern "C"
     };
 
 // 0x0040	BlockInfo
-#pragma pack(push, 1)
-    struct bms_block_info_t
-    {
-        // byte 1
-        union
-        {
-            struct
-            {
-                uint8_t board_type : 5;
-                uint8_t board_version : 3;
-            };
-            uint8_t board_data_byte;
-        };
-
-        // byte 2
-        union
-        {
-            struct
-            {
-                uint8_t firmware_version : 6;
-                uint8_t protocol_version : 2;
-            };
-            uint8_t software_data_byte;
-        };
-
-        // byte 3
-        // uint8_t unused1;
-
-        // byte 4
-        // uint8_t unused2;
-
-        // byte 5
-        // uint8_t unused3;
-
-        // byte 6
-        // uint8_t unused4;
-
-        // byte 7
-        // uint8_t unused5;
-    };
-#pragma pack(pop)
+typedef block_info_t bms_block_info_t; 
 
 // 0x0041	BlockHealth
-#pragma pack(push, 1)
-    struct bms_block_health_t
-    {
-        // byte 1 & 2
-        uint16_t voltage;
-
-        // byte 3 & 4
-        int16_t current;
-
-        // byte 5
-        int8_t temperature;
-
-        // byte 6
-        // uint8_t unused1;
-
-        // byte 7
-        // uint8_t unused2;
-    };
-#pragma pack(pop)
+typedef block_health_t bms_block_health_t; 
 
 // 0x0042	BlockCfg
-#pragma pack(push, 1)
-    struct bms_block_cfg_t
-    {
-        // byte 1
-        uint8_t unused1;
-
-        // byte 2
-        uint8_t unused2;
-
-        // byte 3
-        uint8_t unused3;
-
-        // byte 4
-        uint8_t unused4;
-
-        // byte 5
-        uint8_t unused5;
-
-        // byte 6
-        uint8_t unused6;
-
-        // byte 7
-        uint8_t unused7;
-    };
-#pragma pack(pop)
+typedef block_cfg_t bms_block_cfg_t; 
 
 // 0x0043	BlockError
-#pragma pack(push, 1)
-    struct bms_block_error_t
-    {
-        // byte 1
-        uint8_t code;
-
-        // byte 2
-        // uint8_t unused1;
-
-        // byte 3
-        // uint8_t unused2;
-
-        // byte 4
-        // uint8_t unused3;
-
-        // byte 5
-        // uint8_t unused4;
-
-        // byte 6
-        // uint8_t unused5;
-
-        // byte 7
-        // uint8_t unused6;
-    };
-#pragma pack(pop)
+typedef block_error_t bms_block_error_t; 
 
 // 0x0047	LowVoltageMinMaxDelta
 #pragma pack(push, 1)
