@@ -130,7 +130,7 @@ void convert_bms_data_from_uart_to_can_structure(uint8_t bms_packet_data[BMS_BOA
 bool init_can_manager_for_bms(CANManager &cm, bms_can_data_t &bms_can_data)
 {
     CANObject *co = nullptr;
-    CANFunctionTimerNormal *func_timer_norm = nullptr;
+    CANFunctionTimerBase *func_timer = nullptr;
 
     // 0x0040	BlockInfo
     // request | timer:15000	byte	1 + 7	{ type[0] data[1..7] }
@@ -158,17 +158,15 @@ bool init_can_manager_for_bms(CANManager &cm, bms_can_data_t &bms_can_data)
     co = cm.add_can_object(BMS_CANO_ID_HIGH_VOLTAGE, "HighVoltage");
     co->add_data_field(DF_UINT32, &bms_can_data.high_voltage);
     co->add_function(CAN_FUNC_REQUEST_IN);
-    co->add_function(CAN_FUNC_TIMER_NORMAL);
-    func_timer_norm->set_period(1000);
-
+    add_three_timers(*co, 1000);
+    
     // 0x0045	HighCurrent
     // request | timer:1000	int32_t	1 + 4	{ type[0] data[1..4] }
     // Общий ток разряда / заряда АКБ, мА.
     co = cm.add_can_object(BMS_CANO_ID_HIGH_CURRENT, "HighCurrent");
     co->add_data_field(DF_INT32, &bms_can_data.high_current);
     co->add_function(CAN_FUNC_REQUEST_IN);
-    co->add_function(CAN_FUNC_TIMER_NORMAL);
-    func_timer_norm->set_period(1000);
+    add_three_timers(*co, 1000);
 
     // 0x0046	MaxTemperature
     // request | timer:5000 | event	int8_t	1 + 1	{ type[0] data[1] }
@@ -176,8 +174,7 @@ bool init_can_manager_for_bms(CANManager &cm, bms_can_data_t &bms_can_data)
     co = cm.add_can_object(BMS_CANO_ID_MAX_TEMPERATURE, "MaxTemperature");
     co->add_data_field(DF_INT8, &bms_can_data.max_temperature);
     co->add_function(CAN_FUNC_REQUEST_IN);
-    co->add_function(CAN_FUNC_TIMER_NORMAL);
-    func_timer_norm->set_period(5000);
+    add_three_timers(*co, 5000);
 
     // 0x0047	LowVoltageMinMaxDelta
     // request | event	uint16_t	1 + 6	{ type[0] v1[1..2] v2[3..4] v3[5..6] }
@@ -187,6 +184,7 @@ bool init_can_manager_for_bms(CANManager &cm, bms_can_data_t &bms_can_data)
     co->add_data_field(DF_UINT16, &bms_can_data.bms_low_voltage_min_max_delta.max);
     co->add_data_field(DF_UINT16, &bms_can_data.bms_low_voltage_min_max_delta.delta);
     co->add_function(CAN_FUNC_REQUEST_IN);
+    co->add_function(CAN_FUNC_EVENT_ERROR);
 
     // 0x0048	Temperature1
     // request	int8_t	1 + 7	{ type[0] t1[1] t2[2] t3[3] t4[4] t5[5] t6[6] t7[7] }
