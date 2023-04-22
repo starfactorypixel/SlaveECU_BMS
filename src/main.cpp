@@ -66,7 +66,6 @@ UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
-<<<<<<< HEAD
 
 uint8_t bms_packet_data[BMS_BOARD_PACKET_SIZE] = {0};
 bms_can_data_t bms_can_data;
@@ -92,40 +91,6 @@ uint8_t FlagReciveUART3 = 0;
 uint16_t write_data16[30];
 uint16_t read_data16[30];
 
-=======
-	CAN_TxHeaderTypeDef TxHeader;
-	CAN_RxHeaderTypeDef RxHeader;
-	uint8_t TxData[8] = {0,};
-	uint8_t RxData[8] = {0,};
-	uint32_t TxMailbox = 0;
-	uint8_t trans_str[30];
-	
-	_params_v params_obj;
-	
-	
-	//------------------------  Ds18b20
-	uint8_t Dev_ID[8][8]={0};
-	uint8_t Dev_Cnt;
-	char str1[60];
-	//------------------------  ADC
-	uint16_t ADC_value[10];
-	uint8_t ADC_cnt_state = 0;
-	uint16_t ADC_cnt = 0;
-	uint16_t ADC_senors[10];
-	//------------------------  Timer	
-	
-	//------------------------ UART	
-	uint8_t receiveBuff_huart3[200];
-	uint8_t receiveBuffStat_huart3[200];
-	uint16_t ReciveUartSize = 0;
-	uint8_t FlagReciveUART3 = 0;
-	//------------------------ FLASH
-	uint16_t write_data16[30];
-	uint16_t read_data16[30];
-	
-	
-	
->>>>>>> master
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -963,10 +928,6 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-<<<<<<< HEAD
-=======
-
->>>>>>> master
 static void MX_USART3_UART8b_Init(void)
 {
   huart3.Instance = USART3;
@@ -982,10 +943,6 @@ static void MX_USART3_UART8b_Init(void)
     Error_Handler();
   }
 }
-<<<<<<< HEAD
-=======
-
->>>>>>> master
 /* USER CODE END 4 */
 
 /**
