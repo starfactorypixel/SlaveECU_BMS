@@ -1,5 +1,10 @@
 #ifndef __FLASH_H__
 #define __FLASH_H__
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "stm32f1xx_hal.h"
 
 
@@ -137,5 +142,9 @@
 uint8_t Write_flash_16b(uint8_t len);
 void Read_flash_16b(uint8_t len);
 uint8_t Erase_flash(uint32_t Erase_address);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __MAIN_H__ */

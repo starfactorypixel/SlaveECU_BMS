@@ -32,9 +32,26 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <stdio.h>
+#include <stdlib.h>
+
 #include "ds18b20.h"
 #include "flash.h"
-//
+
+#ifdef __cplusplus
+}
+#endif
+
+#include <time.h>
+#include <stdint.h>
+#include <cassert>
+
+#include "BMS_low_level_abstraction.h"
+#include "CANLibrary.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
