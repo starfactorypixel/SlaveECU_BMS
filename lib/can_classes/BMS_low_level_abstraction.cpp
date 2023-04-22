@@ -130,7 +130,6 @@ void convert_bms_data_from_uart_to_can_structure(uint8_t bms_packet_data[BMS_BOA
 bool init_can_manager_for_bms(CANManager &cm, bms_can_data_t &bms_can_data)
 {
     CANObject *co = nullptr;
-    CANFunctionTimerBase *func_timer = nullptr;
 
     // 0x0040	BlockInfo
     // request | timer:15000	byte	1 + 7	{ type[0] data[1..7] }
