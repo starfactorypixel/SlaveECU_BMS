@@ -17,7 +17,8 @@
  ******************************************************************************
  */
 
-#define DEBUG
+// DEBUG is already defined in 'platformio.ini'
+//#define DEBUG
 
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
@@ -151,18 +152,14 @@ void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
     CANFrame new_frame(RxHeader.StdId, &RxData[0], RxHeader.DLC);
     can_manager.take_new_rx_frame(new_frame);
 
-#ifdef DEBUG
-    sprintf(str1, "CAN 0x%04lX", RxHeader.StdId);
-    HAL_UART_Transmit(&huart1, (uint8_t *)str1, strlen(str1), 100);
-#endif
+    LOG("RX: CAN 0x%04lX", RxHeader.StdId);
   }
 }
 
 void HAL_CAN_ErrorCallback(CAN_HandleTypeDef *hcan)
 {
   uint32_t er = HAL_CAN_GetError(hcan);
-  sprintf(str1, "ER CAN %lu %08lX", (unsigned long)er, (unsigned long)er);
-  HAL_UART_Transmit(&huart1, (uint8_t *)str1, strlen(str1), 100);
+  LOG("ER CAN %lu %08lX", (unsigned long)er, (unsigned long)er);
 }
 
 void HAL_CAN_Send(CANFrame &can_frame)
@@ -198,10 +195,7 @@ void HAL_CAN_Send(CANFrame &can_frame)
 
   if (HAL_CAN_AddTxMessage(&hcan, &TxHeader, TxData, &TxMailbox) != HAL_OK)
   {
-#ifdef DEBUG
-    sprintf(str1, "CAN 0x%04lX", TxHeader.StdId);
-    HAL_UART_Transmit(&huart1, (uint8_t *)"ER SEND\n", 8, 100);
-#endif
+    LOG("TX ERROR: CAN 0x%04lX", TxHeader.StdId);
   }
 }
 
@@ -228,17 +222,14 @@ void readADC(void)
   for (uint8_t i = 0; i < 10; i++)
   {
     ADC_senors[i] = ADC_value[i];
-    sprintf(str1, "ADC %d =", i);
-    HAL_UART_Transmit(&huart1, (uint8_t *)str1, strlen(str1), 0x1000);
-    sprintf(str1, " %d \r\n", ADC_senors[i]);
-    HAL_UART_Transmit(&huart1, (uint8_t *)str1, strlen(str1), 0x1000);
+    LOG("ADC %d = %d", i, ADC_senors[i]);
   }
   for (uint8_t i = 0; i < 10; i++)
   {
     bms_can_data.other_temperature.temp_5_19[i] = ADCtoTEMPER(ADC_senors[i]);
   }
 
-  convert_bms_data_from_uart_to_can_structure(bms_packet_data, bms_can_data);
+  update_max_temperature(bms_can_data);
 }
 
 void read_ds18b20()
@@ -262,9 +253,9 @@ void read_ds18b20()
   for (uint8_t i = 1; i <= Dev_Cnt; i++)
   {
     ds18b20_ReadStratcpad(NO_SKIP_ROM, dt, i);
-    sprintf(str1, "STRATHPAD %d: %02X %02X %02X %02X %02X %02X %02X %02X; ",
-            i, dt[0], dt[1], dt[2], dt[3], dt[4], dt[5], dt[6], dt[7]);
-    HAL_UART_Transmit(&huart1, (uint8_t *)str1, strlen(str1), 0x1000);
+    LOGwoN("STRATHPAD %d: %02X %02X %02X %02X %02X %02X %02X %02X",
+           i, dt[0], dt[1], dt[2], dt[3], dt[4], dt[5], dt[6], dt[7]);
+
     raw_temper = ((uint16_t)dt[1] << 8) | dt[0];
     if (ds18b20_GetSign(raw_temper))
       c = '-';
@@ -272,8 +263,7 @@ void read_ds18b20()
       c = '+';
     temper = ds18b20_Convert(raw_temper);
 
-    sprintf(str1, "Raw t: 0x%04X; t: %c%.2f\r\n", raw_temper, c, temper);
-    HAL_UART_Transmit(&huart1, (uint8_t *)str1, strlen(str1), 0x1000);
+    LOGstring("Raw t: 0x%04X; t: %c%.2f\n", raw_temper, c, temper);
 
     // temp_5_19[i] for i=0..9 is reserved for 10 ADC values
     if (i + 9 < 15)
@@ -282,7 +272,7 @@ void read_ds18b20()
     }
   }
 
-  convert_bms_data_from_uart_to_can_structure(bms_packet_data, bms_can_data);
+  update_max_temperature(bms_can_data);
 }
 
 void write_flash()
@@ -434,25 +424,18 @@ int main(void)
   // опросить датчики ds18b20
   port_init();
   status = ds18b20_init(NO_SKIP_ROM);
-  sprintf(str1, "Init Status: %d\r\n", status);
-  HAL_UART_Transmit(&huart1, (uint8_t *)str1, strlen(str1), 0x1000);
-  sprintf(str1, "Dev count: %d\r\n", Dev_Cnt);
-  HAL_UART_Transmit(&huart1, (uint8_t *)str1, strlen(str1), 0x1000);
+  LOG("Init Status: %d", status);
+  LOG("Dev count: %d", Dev_Cnt);
   for (uint8_t i = 1; i <= Dev_Cnt; i++)
   {
-    sprintf(str1, "Device %d\r\n", i);
-    HAL_UART_Transmit(&huart1, (uint8_t *)str1, strlen(str1), 0x1000);
-    sprintf(str1, "ROM RAW: %02X %02X %02X %02X %02X %02X %02X %02X\r\n",
-            Dev_ID[i - 1][0], Dev_ID[i - 1][1], Dev_ID[i - 1][2], Dev_ID[i - 1][3],
-            Dev_ID[i - 1][4], Dev_ID[i - 1][5], Dev_ID[i - 1][6], Dev_ID[i - 1][7]);
-    HAL_UART_Transmit(&huart1, (uint8_t *)str1, strlen(str1), 0x1000);
-    sprintf(str1, "Family CODE: 0x%02X\r\n", Dev_ID[i - 1][0]);
-    HAL_UART_Transmit(&huart1, (uint8_t *)str1, strlen(str1), 0x1000);
-    sprintf(str1, "ROM CODE: 0x%02X%02X%02X%02X%02X%02X\r\n", Dev_ID[i - 1][6], Dev_ID[i - 1][5],
-            Dev_ID[i - 1][4], Dev_ID[i - 1][3], Dev_ID[i - 1][2], Dev_ID[i - 1][1]);
-    HAL_UART_Transmit(&huart1, (uint8_t *)str1, strlen(str1), 0x1000);
-    sprintf(str1, "CRC: 0x%02X\r\n", Dev_ID[i - 1][7]);
-    HAL_UART_Transmit(&huart1, (uint8_t *)str1, strlen(str1), 0x1000);
+    LOG("Device %d", i);
+    LOG("ROM RAW: %02X %02X %02X %02X %02X %02X %02X %02X",
+        Dev_ID[i - 1][0], Dev_ID[i - 1][1], Dev_ID[i - 1][2], Dev_ID[i - 1][3],
+        Dev_ID[i - 1][4], Dev_ID[i - 1][5], Dev_ID[i - 1][6], Dev_ID[i - 1][7]);
+    LOG("Family CODE: 0x%02X", Dev_ID[i - 1][0]);
+    LOG("ROM CODE: 0x%02X%02X%02X%02X%02X%02X\r\n", Dev_ID[i - 1][6], Dev_ID[i - 1][5],
+        Dev_ID[i - 1][4], Dev_ID[i - 1][3], Dev_ID[i - 1][2], Dev_ID[i - 1][1]);
+    LOG("CRC: 0x%02X\r\n", Dev_ID[i - 1][7]);
   }
 
   // запустить в цикле опрос 10 каналов ADC через DMA
@@ -493,7 +476,7 @@ int main(void)
     {
       readADC();      // read 10 ADC channels
       read_ds18b20(); // read all DS18B20 temperature sensors
-      convert_bms_data_from_uart_to_can_structure(bms_packet_data, bms_can_data);
+      update_max_temperature(bms_can_data);
       last_tick2 = HAL_GetTick();
     }
 
