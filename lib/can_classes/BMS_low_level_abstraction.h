@@ -97,17 +97,17 @@ extern "C"
         BMS_CANO_ID_LOW_VOLTAGE_22_24 = 0x0052,
     };
 
-// 0x0040	BlockInfo
-typedef block_info_t bms_block_info_t; 
+    // 0x0040	BlockInfo
+    typedef block_info_t bms_block_info_t;
 
-// 0x0041	BlockHealth
-typedef block_health_t bms_block_health_t; 
+    // 0x0041	BlockHealth
+    typedef block_health_t bms_block_health_t;
 
-// 0x0042	BlockCfg
-typedef block_cfg_t bms_block_cfg_t; 
+    // 0x0042	BlockCfg
+    typedef block_cfg_t bms_block_cfg_t;
 
-// 0x0043	BlockError
-typedef block_error_t bms_block_error_t; 
+    // 0x0043	BlockError
+    typedef block_error_t bms_block_error_t;
 
 // 0x0047	LowVoltageMinMaxDelta
 #pragma pack(push, 1)
@@ -133,10 +133,17 @@ typedef block_error_t bms_block_error_t;
     {
         int8_t mosfet;
         int8_t balancer;
-        int8_t bms_sensor1;
-        int8_t bms_sensor2;
-        int8_t bms_sensor3;
-        int8_t bms_sensor4;
+        union
+        {
+            int8_t bms_sensor_arr[4];
+            struct
+            {
+                int8_t bms_sensor1;
+                int8_t bms_sensor2;
+                int8_t bms_sensor3;
+                int8_t bms_sensor4;
+            };
+        };
     };
 #pragma pack(pop)
 
@@ -278,9 +285,11 @@ typedef block_error_t bms_block_error_t;
 
     // ***************************************************************************************************
     // BMS related functions
-    uint16_t bms_crc(uint8_t *bms_packet_data);
-    void fill_bms_test_data(uint8_t *bms_packet_data);
-    void convert_bms_data_from_uart_to_can_structure(uint8_t *bms_packet_data, bms_can_data_t &bms_can_data);
+    uint16_t bms_raw_data_crc(uint8_t bms_packet_data[BMS_BOARD_PACKET_SIZE]);
+    uint16_t get_bms_raw_data_crc(uint8_t bms_packet_data[BMS_BOARD_PACKET_SIZE]);
+    bool bms_raw_data_validation(uint8_t bms_packet_data[BMS_BOARD_PACKET_SIZE]);
+    void update_max_temperature(bms_can_data_t &bms_can_data);
+    void convert_bms_data_from_uart_to_can_structure(uint8_t bms_packet_data[BMS_BOARD_PACKET_SIZE], bms_can_data_t &bms_can_data);
     bool init_can_manager_for_bms(CANManager &cm, bms_can_data_t &bms_can_data);
 
 #ifdef __cplusplus
