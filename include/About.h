@@ -2,20 +2,22 @@
 
 namespace About
 {
-	static constexpr char name[] = "BMS_ECU";
+	static constexpr char name[] = "BMSReaderECU";
 	static constexpr char desc[] = "BMS interface board for Pixel project";
-	static constexpr char hw_ver[] = "1.0.0";
-	static constexpr char sw_ver[] = "0.1.1";
+	static constexpr char board_type = 5;		// 5 bits
+	static constexpr char board_ver = 1;		// 3 bits
+	static constexpr char soft_ver = 1;			// 6 bits
+	static constexpr char can_ver = 1;			// 2 bits
 	static constexpr char git[] = "https://github.com/starfactorypixel/SlaveECU_BMS";
 	
 	inline void Setup()
 	{
-		Serial::Print("\r\n\r\n");
-		Serial::Printf<128>("+INFO=%s, hw:%s, sw:%s\r\n", name, hw_ver, sw_ver);
-		Serial::Printf<128>("+INFO=Desc: %s\r\n", desc);
-		Serial::Printf<128>("+INFO=Build: %s %s\r\n", __DATE__, __TIME__);
-		Serial::Printf<128>("+INFO=GitHub: %s\r\n", git);
-		Serial::Print("+READY\r\n\r\n");
+		Logger.PrintNewLine();
+		Logger.PrintTopic("INFO").Printf("%s, board:%d, soft:%d, can:%d", name, board_ver, soft_ver, can_ver).PrintNewLine();
+		Logger.PrintTopic("INFO").Printf("Desc: %s", desc).PrintNewLine();
+		Logger.PrintTopic("INFO").Printf("Build: %s %s", __DATE__, __TIME__).PrintNewLine();
+		Logger.PrintTopic("INFO").Printf("GitHub: %s", git).PrintNewLine();
+		Logger.PrintTopic("READY").PrintNewLine();
 		
 		return;
 	}

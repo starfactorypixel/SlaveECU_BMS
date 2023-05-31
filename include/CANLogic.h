@@ -245,13 +245,13 @@ namespace CANLib
 		uint32_t *BMS_header = (uint32_t *)bms_raw_packet_data;
 		if (*BMS_header != BMS_PACKET_HEADER)
 		{
-			Serial::Printf<128>("ERROR: BMS header error! Expected: 0x%08X, presented: 0x%08lX", BMS_PACKET_HEADER, *BMS_header);
+			DEBUG_LOG("ERROR: BMS header error! Expected: 0x%08X, presented: 0x%08lX", BMS_PACKET_HEADER, *BMS_header);
 			return;
 		}
 
 		if (!bms_raw_data_validation(bms_raw_packet_data))
 		{
-			Serial::Printf<128>("ERROR: BMS CRC error! Expected: 0x%04X, presented: 0x%04X", bms_raw_data_crc(bms_raw_packet_data), get_bms_raw_data_crc(bms_raw_packet_data));
+			DEBUG_LOG("ERROR: BMS CRC error! Expected: 0x%04X, presented: 0x%04X", bms_raw_data_crc(bms_raw_packet_data), get_bms_raw_data_crc(bms_raw_packet_data));
 			return;
 		}
 

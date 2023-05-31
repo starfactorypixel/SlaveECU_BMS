@@ -19,8 +19,7 @@
 #include "main.h"
 #include "ds18b20.h"
 #include "BMS_low_level_abstraction.h"
-
-#include <SerialUtils.h>
+#include <LoggerLibrary.h>
 #include <About.h>
 #include <Leds.h>
 #include <CANLogic.h>
@@ -39,7 +38,7 @@ ADC_HandleTypeDef hadc1;
 DMA_HandleTypeDef hdma_adc1;
 CAN_HandleTypeDef hcan;
 TIM_HandleTypeDef htim1;
-UART_HandleTypeDef huart1;
+UART_HandleTypeDef hDebugUart;
 UART_HandleTypeDef huart3;
 
 //------------------------  Ds18b20
@@ -109,7 +108,7 @@ void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
     if (HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO1, &RxHeader, RxData) == HAL_OK)
     {
         CANLib::can_manager.IncomingCANFrame(RxHeader.StdId, RxData, RxHeader.DLC);
-        // LOG("RX: CAN 0x%04lX", RxHeader.StdId);
+        // DEBUG_LOG("RX: CAN 0x%04lX", RxHeader.StdId);
     }
 }
 
@@ -117,7 +116,7 @@ void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
 /// @param hcan Pointer to the structure that contains CAN configuration.
 void HAL_CAN_ErrorCallback(CAN_HandleTypeDef *hcan)
 {
-    LOG("CAN ERROR: %lu %08lX", hcan->ErrorCode, hcan->ErrorCode);
+    DEBUG_LOG("CAN ERROR: %lu %08lX", hcan->ErrorCode, hcan->ErrorCode);
 }
 
 /// @brief Sends data via CAN bus
@@ -143,13 +142,13 @@ void HAL_CAN_Send(can_object_id_t id, uint8_t *data, uint8_t length)
 
     while (HAL_CAN_GetTxMailboxesFreeLevel(&hcan) == 0)
     {
-        Leds::ledsObj.SetOn(Leds::ledsObj.LED_YELLOW);
+        Leds::obj.SetOn(Leds::LED_YELLOW);
     }
-    Leds::ledsObj.SetOff(Leds::ledsObj.LED_YELLOW);
+    Leds::obj.SetOff(Leds::LED_YELLOW);
 
     if (HAL_CAN_AddTxMessage(&hcan, &TxHeader, TxData, &TxMailbox) != HAL_OK)
     {
-        LOG("CAN TX ERROR: 0x%04lX", TxHeader.StdId);
+        DEBUG_LOG("CAN TX ERROR: 0x%04lX", TxHeader.StdId);
     }
 }
 
@@ -194,13 +193,13 @@ void read_ds18b20()
     for (uint8_t i = 1; i <= Dev_Cnt; i++)
     {
         ds18b20_ReadStratcpad(NO_SKIP_ROM, dt, i);
-        LOGwoN("STRATHPAD %d: %02X %02X %02X %02X %02X %02X %02X %02X",
+        DEBUG_LOG("STRATHPAD %d: %02X %02X %02X %02X %02X %02X %02X %02X",
                i, dt[0], dt[1], dt[2], dt[3], dt[4], dt[5], dt[6], dt[7]);
 
         raw_temper = ((uint16_t)dt[1] << 8) | dt[0];
         temper = ds18b20_Convert(raw_temper);
 
-        LOGstring("Raw t: 0x%04X; t: %s%.2f\n", raw_temper, (ds18b20_GetSign(raw_temper)) ? "-" : "+", temper);
+        DEBUG_LOG("Raw t: 0x%04X; t: %s%.2f\n", raw_temper, (ds18b20_GetSign(raw_temper)) ? "-" : "+", temper);
 
         // int8_t temperatures[ADC_CHANNEL_COUNT + MAX_DS18B20_COUNT];
         //    t[0]..t[ADC_CHANNEL_COUNT-1] - external temperature sensors (ADC)
@@ -229,18 +228,18 @@ void InitPeripherals()
 void InitDS18B20()
 {
     port_init();
-    LOG("Init Status: %d", ds18b20_init(NO_SKIP_ROM));
-    LOG("Dev count: %d", Dev_Cnt);
+    DEBUG_LOG("Init Status: %d", ds18b20_init(NO_SKIP_ROM));
+    DEBUG_LOG("Dev count: %d", Dev_Cnt);
     for (uint8_t i = 1; i <= Dev_Cnt; i++)
     {
-        LOG("Device %d", i);
-        LOG("ROM RAW: %02X %02X %02X %02X %02X %02X %02X %02X",
+        DEBUG_LOG("Device %d", i);
+        DEBUG_LOG("ROM RAW: %02X %02X %02X %02X %02X %02X %02X %02X",
             Dev_ID[i - 1][0], Dev_ID[i - 1][1], Dev_ID[i - 1][2], Dev_ID[i - 1][3],
             Dev_ID[i - 1][4], Dev_ID[i - 1][5], Dev_ID[i - 1][6], Dev_ID[i - 1][7]);
-        LOG("Family CODE: 0x%02X", Dev_ID[i - 1][0]);
-        LOG("ROM CODE: 0x%02X%02X%02X%02X%02X%02X\r\n", Dev_ID[i - 1][6], Dev_ID[i - 1][5],
+        DEBUG_LOG("Family CODE: 0x%02X", Dev_ID[i - 1][0]);
+        DEBUG_LOG("ROM CODE: 0x%02X%02X%02X%02X%02X%02X\r\n", Dev_ID[i - 1][6], Dev_ID[i - 1][5],
             Dev_ID[i - 1][4], Dev_ID[i - 1][3], Dev_ID[i - 1][2], Dev_ID[i - 1][1]);
-        LOG("CRC: 0x%02X\r\n", Dev_ID[i - 1][7]);
+        DEBUG_LOG("CRC: 0x%02X\r\n", Dev_ID[i - 1][7]);
     }
 }
 
@@ -554,15 +553,15 @@ static void MX_TIM1_Init(void)
  */
 static void MX_USART1_UART_Init(void)
 {
-    huart1.Instance = USART1;
-    huart1.Init.BaudRate = 115200;
-    huart1.Init.WordLength = UART_WORDLENGTH_8B;
-    huart1.Init.StopBits = UART_STOPBITS_1;
-    huart1.Init.Parity = UART_PARITY_NONE;
-    huart1.Init.Mode = UART_MODE_TX_RX;
-    huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-    huart1.Init.OverSampling = UART_OVERSAMPLING_16;
-    if (HAL_UART_Init(&huart1) != HAL_OK)
+    hDebugUart.Instance = USART1;
+    hDebugUart.Init.BaudRate = 115200;
+    hDebugUart.Init.WordLength = UART_WORDLENGTH_8B;
+    hDebugUart.Init.StopBits = UART_STOPBITS_1;
+    hDebugUart.Init.Parity = UART_PARITY_NONE;
+    hDebugUart.Init.Mode = UART_MODE_TX_RX;
+    hDebugUart.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+    hDebugUart.Init.OverSampling = UART_OVERSAMPLING_16;
+    if (HAL_UART_Init(&hDebugUart) != HAL_OK)
     {
         Error_Handler();
     }
@@ -704,7 +703,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
  */
 void Error_Handler(void)
 {
-    Leds::ledsObj.SetOff(Leds::ledsObj.LED_GREEN);
+    Leds::obj.SetOff(Leds::LED_GREEN);
     while (1)
     {
     }
