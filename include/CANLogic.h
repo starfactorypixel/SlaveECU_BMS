@@ -183,15 +183,33 @@ namespace CANLib
 		can_manager.RegisterObject(obj_low_voltage_22_24);
 		can_manager.RegisterObject(obj_battery_percent);
 		can_manager.RegisterObject(obj_battery_power);
-
+		
+		// Set versions data to block_info.
+		obj_block_info.SetValue(0, (About::board_type << 3 | About::board_ver), CAN_TIMER_TYPE_NORMAL);
+		obj_block_info.SetValue(1, (About::soft_ver << 2 | About::can_ver), CAN_TIMER_TYPE_NORMAL);
+		
 		return;
 	}
-
+	
 	inline void Loop(uint32_t &current_time)
 	{
 		can_manager.Process(current_time);
-		current_time = HAL_GetTick();
+		
+		// Set uptime to block_info.
+		static uint32_t iter = 0;
+		if(current_time - iter > 1000)
+		{
+			iter = current_time;
 
+			uint8_t *data = (uint8_t *)&current_time;
+			obj_block_info.SetValue(3, data[0], CAN_TIMER_TYPE_NORMAL);
+			obj_block_info.SetValue(4, data[1], CAN_TIMER_TYPE_NORMAL);
+			obj_block_info.SetValue(5, data[2], CAN_TIMER_TYPE_NORMAL);
+			obj_block_info.SetValue(6, data[3], CAN_TIMER_TYPE_NORMAL);
+		}
+		
+		current_time = HAL_GetTick();
+		
 		return;
 	}
 
