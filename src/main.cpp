@@ -23,7 +23,6 @@
 #include <About.h>
 #include <Leds.h>
 #include <CANLogic.h>
-#include <BMSLogic.h>
 
 #define MARKER_FIRST_START 100 // Маркер что flash не пустая
 
