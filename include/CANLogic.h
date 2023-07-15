@@ -6,7 +6,6 @@
 void HAL_CAN_Send(can_object_id_t id, uint8_t *data, uint8_t length);
 
 extern CAN_HandleTypeDef hcan;
-extern UART_HandleTypeDef huart1;
 
 namespace CANLib
 {
