@@ -23,6 +23,7 @@
 #include <About.h>
 #include <Leds.h>
 #include <CANLogic.h>
+#include <BMSLogic.h>
 
 #define MARKER_FIRST_START 100 // Маркер что flash не пустая
 
@@ -39,7 +40,7 @@ DMA_HandleTypeDef hdma_adc1;
 CAN_HandleTypeDef hcan;
 TIM_HandleTypeDef htim1;
 UART_HandleTypeDef hDebugUart;
-UART_HandleTypeDef huart3;
+UART_HandleTypeDef hBmsUart;
 
 //------------------------  Ds18b20
 #define MAX_DS18B20_COUNT 8 // TODO: почему 8?! Вроде по описанию в гуглотаблице максимум 6 должно быть...
@@ -53,7 +54,7 @@ uint16_t ADC_cnt = 0;
 uint16_t ADC_senors[ADC_CHANNEL_COUNT];
 
 //------------------------ UART
-uint8_t receiveBuff_huart3[UART3_BUFF_SIZE];
+uint8_t receiveBuff_hBmsUart[UART3_BUFF_SIZE];
 uint8_t FlagReciveUART3 = 0;
 uint8_t bms_packet_data[BMS_BOARD_PACKET_SIZE] = {0};
 
@@ -80,17 +81,17 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
         return;
 
     // Check BMS packet header
-    uint32_t *BMS_header = (uint32_t *)receiveBuff_huart3;
+    uint32_t *BMS_header = (uint32_t *)receiveBuff_hBmsUart;
     if (*BMS_header == BMS_PACKET_HEADER && Size >= BMS_BOARD_PACKET_SIZE)
     {
         // set flag that BMS packet received
         FlagReciveUART3 = 1;
 
         // fill the BMS structure with data
-        memcpy(&bms_packet_data, receiveBuff_huart3, BMS_BOARD_PACKET_SIZE);
+        memcpy(&bms_packet_data, receiveBuff_hBmsUart, BMS_BOARD_PACKET_SIZE);
     }
 
-    HAL_UARTEx_ReceiveToIdle_IT(&huart3, (uint8_t *)receiveBuff_huart3, UART3_BUFF_SIZE);
+    HAL_UARTEx_ReceiveToIdle_IT(&hBmsUart, (uint8_t *)receiveBuff_hBmsUart, UART3_BUFF_SIZE);
 }
 
 //-------------------------------- Прерывание от таймера TIM1
@@ -281,7 +282,7 @@ int main(void)
     CANLib::Setup();
 
     /* активируем прерывания USART3*/
-    HAL_UARTEx_ReceiveToIdle_IT(&huart3, (uint8_t *)receiveBuff_huart3, UART3_BUFF_SIZE);
+    HAL_UARTEx_ReceiveToIdle_IT(&hBmsUart, (uint8_t *)receiveBuff_hBmsUart, UART3_BUFF_SIZE);
     
     // CAN MCP2562
     // if we need normal CAN operation then STBY pin should be LOW
@@ -574,15 +575,15 @@ static void MX_USART1_UART_Init(void)
  */
 static void MX_USART3_UART_Init(void)
 {
-    huart3.Instance = USART3;
-    huart3.Init.BaudRate = 115200;
-    huart3.Init.WordLength = UART_WORDLENGTH_8B;
-    huart3.Init.StopBits = UART_STOPBITS_1;
-    huart3.Init.Parity = UART_PARITY_NONE;
-    huart3.Init.Mode = UART_MODE_TX_RX;
-    huart3.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-    huart3.Init.OverSampling = UART_OVERSAMPLING_16;
-    if (HAL_UART_Init(&huart3) != HAL_OK)
+    hBmsUart.Instance = USART3;
+    hBmsUart.Init.BaudRate = 115200;
+    hBmsUart.Init.WordLength = UART_WORDLENGTH_8B;
+    hBmsUart.Init.StopBits = UART_STOPBITS_1;
+    hBmsUart.Init.Parity = UART_PARITY_NONE;
+    hBmsUart.Init.Mode = UART_MODE_TX_RX;
+    hBmsUart.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+    hBmsUart.Init.OverSampling = UART_OVERSAMPLING_16;
+    if (HAL_UART_Init(&hBmsUart) != HAL_OK)
     {
         Error_Handler();
     }
@@ -663,15 +664,15 @@ static void MX_GPIO_Init(void)
 /*
 static void MX_USART3_UART8b_Init(void)
 {
-    huart3.Instance = USART3;
-    huart3.Init.BaudRate = 115200;
-    huart3.Init.WordLength = UART_WORDLENGTH_8B;
-    huart3.Init.StopBits = UART_STOPBITS_1;
-    huart3.Init.Parity = UART_PARITY_NONE;
-    huart3.Init.Mode = UART_MODE_TX_RX;
-    huart3.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-    huart3.Init.OverSampling = UART_OVERSAMPLING_16;
-    if (HAL_UART_Init(&huart3) != HAL_OK)
+    hBmsUart.Instance = USART3;
+    hBmsUart.Init.BaudRate = 115200;
+    hBmsUart.Init.WordLength = UART_WORDLENGTH_8B;
+    hBmsUart.Init.StopBits = UART_STOPBITS_1;
+    hBmsUart.Init.Parity = UART_PARITY_NONE;
+    hBmsUart.Init.Mode = UART_MODE_TX_RX;
+    hBmsUart.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+    hBmsUart.Init.OverSampling = UART_OVERSAMPLING_16;
+    if (HAL_UART_Init(&hBmsUart) != HAL_OK)
     {
         Error_Handler();
     }
