@@ -79,7 +79,6 @@ extern "C"
     uint16_t get_bms_raw_data_crc(uint8_t bms_packet_data[BMS_BOARD_PACKET_SIZE]);
     bool bms_raw_data_validation(uint8_t bms_packet_data[BMS_BOARD_PACKET_SIZE]);
     int8_t calculate_max_temperature(int8_t temperatures[TOTAL_TEMPERATURE_SENSORS_COUNT]);
-    void process_bms_packet(uint8_t bms_packet_data[BMS_BOARD_PACKET_SIZE]);
 
 #ifdef __cplusplus
 }
