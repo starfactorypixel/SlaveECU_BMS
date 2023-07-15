@@ -23,6 +23,7 @@
 #include <About.h>
 #include <Leds.h>
 #include <CANLogic.h>
+#include <BMSLogic.h>
 
 #define MARKER_FIRST_START 100 // Маркер что flash не пустая
 
@@ -317,6 +318,7 @@ int main(void)
         About::Loop(current_time);
         Leds::Loop(current_time);
         CANLib::Loop(current_time);
+        BMSLogic::Loop(current_time);
     }
 }
 
