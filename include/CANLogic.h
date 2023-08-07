@@ -141,19 +141,37 @@ namespace CANLib
 	// Напряжение на банках: 22, 23, 24.
 	CANObject<uint16_t, 3> obj_low_voltage_22_24(0x0052);
 
-	// 0x0053	BatteryPercent
+	// 0x0053	LowVoltage25-27
+	// request
+	// uint16_t	мВ	1 + 2+2+2	{ type[0] v1[1..2] v2[3..4] v3[5..6] }
+	// Напряжение на банках: 25, 26, 27.
+	CANObject<uint16_t, 3> obj_low_voltage_25_27(0x0053);
+
+	// 0x0054	LowVoltage28-30
+	// request
+	// uint16_t	мВ	1 + 2+2+2	{ type[0] v1[1..2] v2[3..4] v3[5..6] }
+	// Напряжение на банках: 28, 29, 30.
+	CANObject<uint16_t, 3> obj_low_voltage_28_30(0x0054);
+
+	// 0x0055	LowVoltage31-33
+	// request
+	// uint16_t	мВ	1 + 2+2+2	{ type[0] v1[1..2] v2[3..4] v3[5..6] }
+	// Напряжение на банках: 31, 32, 33.
+	CANObject<uint16_t, 3> obj_low_voltage_31_33(0x0055);
+
+	// 0x0056	BatteryPercent
 	// request | timer:10000
 	// uint8_t	%	1 + 1	{ type[0] val[1] }
 	//	<30: WARN, <15: CRIT, else: NORMAL
 	// Уровень заряда АКБ, проценты.
-	CANObject<uint8_t, 1> obj_battery_percent(0x0053, 10000);
+	CANObject<uint8_t, 1> obj_battery_percent(0x0056, 10000);
 
-	// 0x0054	BatteryPower
+	// 0x0057	BatteryPower
 	// request | timer:1000
 	// int16_t	Вт	1 + 2	{ type[0] w[1..2] }
 	// all: NORMAL
 	// Общая мощность потребления / зарядки.
-	CANObject<int16_t, 1> obj_battery_power(0x0054, 1000);
+	CANObject<int16_t, 1> obj_battery_power(0x0057, 1000);
 
 	inline void Setup()
 	{
@@ -186,6 +204,9 @@ namespace CANLib
 		can_manager.RegisterObject(obj_low_voltage_16_18);
 		can_manager.RegisterObject(obj_low_voltage_19_21);
 		can_manager.RegisterObject(obj_low_voltage_22_24);
+		can_manager.RegisterObject(obj_low_voltage_25_27);
+		can_manager.RegisterObject(obj_low_voltage_28_30);
+		can_manager.RegisterObject(obj_low_voltage_31_33);
 		can_manager.RegisterObject(obj_battery_percent);
 		can_manager.RegisterObject(obj_battery_power);
 		
@@ -439,7 +460,34 @@ namespace CANLib
 			obj_low_voltage_22_24.SetValue(i, bms_packet_struct->cells_voltage[cells_voltage_index++]);
 		}
 
-		// 0x0053	BatteryPercent
+		for (uint8_t i = 0; i < 3; i++)
+		{
+			if (cells_voltage_index >= BMS_BATTERY_NUMBER_OF_CELLS)
+				break;
+
+			swap_endian(bms_packet_struct->cells_voltage[cells_voltage_index]);
+			obj_low_voltage_25_27.SetValue(i, bms_packet_struct->cells_voltage[cells_voltage_index++]);
+		}
+
+		for (uint8_t i = 0; i < 3; i++)
+		{
+			if (cells_voltage_index >= BMS_BATTERY_NUMBER_OF_CELLS)
+				break;
+
+			swap_endian(bms_packet_struct->cells_voltage[cells_voltage_index]);
+			obj_low_voltage_28_30.SetValue(i, bms_packet_struct->cells_voltage[cells_voltage_index++]);
+		}
+
+		for (uint8_t i = 0; i < 3; i++)
+		{
+			if (cells_voltage_index >= BMS_BATTERY_NUMBER_OF_CELLS)
+				break;
+
+			swap_endian(bms_packet_struct->cells_voltage[cells_voltage_index]);
+			obj_low_voltage_31_33.SetValue(i, bms_packet_struct->cells_voltage[cells_voltage_index++]);
+		}
+		
+		// 0x0056	BatteryPercent
 		// request | timer:10000
 		// uint8_t	%	1 + 1	{ type[0] val[1] }
 		//	<30: WARN, <15: CRIT, else: NORMAL
@@ -455,7 +503,7 @@ namespace CANLib
 		}
 		obj_battery_percent.SetValue(0, bms_packet_struct->percent, timer_type);
 
-		// 0x0054	BatteryPower
+		// 0x0057	BatteryPower
 		// request | timer:1000
 		// int16_t	Вт	1 + 2	{ type[0] w[1..2] }
 		// all: NORMAL
