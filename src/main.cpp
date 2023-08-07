@@ -101,12 +101,12 @@ void IRQHandlerTIM1(void)
 
 /// @brief Callback function of CAN receiver.
 /// @param hcan Pointer to the structure that contains CAN configuration.
-void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
+void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 {
     CAN_RxHeaderTypeDef RxHeader;
     uint8_t RxData[8] = {0};
 
-    if (HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO1, &RxHeader, RxData) == HAL_OK)
+    if (HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &RxHeader, RxData) == HAL_OK)
     {
         CANLib::can_manager.IncomingCANFrame(RxHeader.StdId, RxData, RxHeader.DLC);
         // DEBUG_LOG("RX: CAN 0x%04lX", RxHeader.StdId);
@@ -194,13 +194,13 @@ void read_ds18b20()
     for (uint8_t i = 1; i <= Dev_Cnt; i++)
     {
         ds18b20_ReadStratcpad(NO_SKIP_ROM, dt, i);
-        DEBUG_LOG("STRATHPAD %d: %02X %02X %02X %02X %02X %02X %02X %02X",
+        DEBUG_LOG_TOPIC("DS18b", "STRATHPAD %d: %02X %02X %02X %02X %02X %02X %02X %02X\n",
                i, dt[0], dt[1], dt[2], dt[3], dt[4], dt[5], dt[6], dt[7]);
 
         raw_temper = ((uint16_t)dt[1] << 8) | dt[0];
         temper = ds18b20_Convert(raw_temper);
 
-        DEBUG_LOG("Raw t: 0x%04X; t: %s%.2f\n", raw_temper, (ds18b20_GetSign(raw_temper)) ? "-" : "+", temper);
+        DEBUG_LOG_TOPIC("DS18b", "Raw t: 0x%04X; t: %s%.2f\n", raw_temper, (ds18b20_GetSign(raw_temper)) ? "-" : "+", temper);
 
         // int8_t temperatures[ADC_CHANNEL_COUNT + MAX_DS18B20_COUNT];
         //    t[0]..t[ADC_CHANNEL_COUNT-1] - external temperature sensors (ADC)
@@ -229,18 +229,18 @@ void InitPeripherals()
 void InitDS18B20()
 {
     port_init();
-    DEBUG_LOG("Init Status: %d", ds18b20_init(NO_SKIP_ROM));
-    DEBUG_LOG("Dev count: %d", Dev_Cnt);
+    DEBUG_LOG_TOPIC("DS18b", "Init Status: %d\n", ds18b20_init(NO_SKIP_ROM));
+    DEBUG_LOG_TOPIC("DS18b", "Dev count: %d\n", Dev_Cnt);
     for (uint8_t i = 1; i <= Dev_Cnt; i++)
     {
-        DEBUG_LOG("Device %d", i);
-        DEBUG_LOG("ROM RAW: %02X %02X %02X %02X %02X %02X %02X %02X",
+        DEBUG_LOG_TOPIC("DS18b", "Device %d\n", i);
+        DEBUG_LOG_TOPIC("DS18b", "ROM RAW: %02X %02X %02X %02X %02X %02X %02X %02X\n",
             Dev_ID[i - 1][0], Dev_ID[i - 1][1], Dev_ID[i - 1][2], Dev_ID[i - 1][3],
             Dev_ID[i - 1][4], Dev_ID[i - 1][5], Dev_ID[i - 1][6], Dev_ID[i - 1][7]);
-        DEBUG_LOG("Family CODE: 0x%02X", Dev_ID[i - 1][0]);
-        DEBUG_LOG("ROM CODE: 0x%02X%02X%02X%02X%02X%02X\r\n", Dev_ID[i - 1][6], Dev_ID[i - 1][5],
+        DEBUG_LOG_TOPIC("DS18b", "Family CODE: 0x%02X\n", Dev_ID[i - 1][0]);
+        DEBUG_LOG_TOPIC("DS18b", "ROM CODE: 0x%02X%02X%02X%02X%02X%02X\n", Dev_ID[i - 1][6], Dev_ID[i - 1][5],
             Dev_ID[i - 1][4], Dev_ID[i - 1][3], Dev_ID[i - 1][2], Dev_ID[i - 1][1]);
-        DEBUG_LOG("CRC: 0x%02X\r\n", Dev_ID[i - 1][7]);
+        DEBUG_LOG_TOPIC("DS18b", "CRC: 0x%02X\n", Dev_ID[i - 1][7]);
     }
 }
 
@@ -276,7 +276,7 @@ int main(void)
     Leds::Setup();
 
     /* активируем события которые будут вызывать прерывания  */
-    HAL_CAN_ActivateNotification(&hcan, CAN_IT_RX_FIFO1_MSG_PENDING | CAN_IT_ERROR | CAN_IT_BUSOFF | CAN_IT_LAST_ERROR_CODE);
+    HAL_CAN_ActivateNotification(&hcan, CAN_IT_RX_FIFO0_MSG_PENDING | CAN_IT_ERROR | CAN_IT_BUSOFF | CAN_IT_LAST_ERROR_CODE);
 
     HAL_CAN_Start(&hcan);
     CANLib::Setup();
@@ -478,25 +478,29 @@ static void MX_ADC1_Init(void)
  */
 static void MX_CAN_Init(void)
 {
+    // https://istarik.ru/blog/stm32/159.html
+
     CAN_FilterTypeDef sFilterConfig;
 
+    // CAN interface initialization
     hcan.Instance = CAN1;
     hcan.Init.Prescaler = 4;
-    hcan.Init.Mode = CAN_MODE_NORMAL;
+    hcan.Init.Mode = CAN_MODE_NORMAL; // CAN_MODE_NORMAL
     hcan.Init.SyncJumpWidth = CAN_SJW_1TQ;
     hcan.Init.TimeSeg1 = CAN_BS1_13TQ;
     hcan.Init.TimeSeg2 = CAN_BS2_2TQ;
-    hcan.Init.TimeTriggeredMode = DISABLE;
-    hcan.Init.AutoBusOff = DISABLE;
-    hcan.Init.AutoWakeUp = DISABLE;
-    hcan.Init.AutoRetransmission = DISABLE;
-    hcan.Init.ReceiveFifoLocked = DISABLE;
-    hcan.Init.TransmitFifoPriority = DISABLE;
+    hcan.Init.TimeTriggeredMode = DISABLE;   // DISABLE
+    hcan.Init.AutoBusOff = ENABLE;           // DISABLE
+    hcan.Init.AutoWakeUp = ENABLE;           // DISABLE
+    hcan.Init.AutoRetransmission = DISABLE;  // DISABLE
+    hcan.Init.ReceiveFifoLocked = ENABLE;    // DISABLE
+    hcan.Init.TransmitFifoPriority = ENABLE; // DISABLE
     if (HAL_CAN_Init(&hcan) != HAL_OK)
     {
         Error_Handler();
     }
 
+    // CAN filtering initialization
     sFilterConfig.FilterBank = 0;
     sFilterConfig.FilterMode = CAN_FILTERMODE_IDMASK;
     sFilterConfig.FilterScale = CAN_FILTERSCALE_32BIT;
@@ -504,10 +508,9 @@ static void MX_CAN_Init(void)
     sFilterConfig.FilterIdLow = 0x0000;
     sFilterConfig.FilterMaskIdHigh = 0x0000;
     sFilterConfig.FilterMaskIdLow = 0x0000;
-    sFilterConfig.FilterFIFOAssignment = CAN_RX_FIFO1;
+    sFilterConfig.FilterFIFOAssignment = CAN_RX_FIFO0;
     sFilterConfig.FilterActivation = ENABLE;
     // sFilterConfig.SlaveStartFilterBank = 14;
-
     if (HAL_CAN_ConfigFilter(&hcan, &sFilterConfig) != HAL_OK)
     {
         Error_Handler();
@@ -556,7 +559,7 @@ static void MX_TIM1_Init(void)
 static void MX_USART1_UART_Init(void)
 {
     hDebugUart.Instance = USART1;
-    hDebugUart.Init.BaudRate = 115200;
+    hDebugUart.Init.BaudRate = 500000;
     hDebugUart.Init.WordLength = UART_WORDLENGTH_8B;
     hDebugUart.Init.StopBits = UART_STOPBITS_1;
     hDebugUart.Init.Parity = UART_PARITY_NONE;
@@ -577,7 +580,7 @@ static void MX_USART1_UART_Init(void)
 static void MX_USART3_UART_Init(void)
 {
     hBmsUart.Instance = USART3;
-    hBmsUart.Init.BaudRate = 115200;
+    hBmsUart.Init.BaudRate = 19200;
     hBmsUart.Init.WordLength = UART_WORDLENGTH_8B;
     hBmsUart.Init.StopBits = UART_STOPBITS_1;
     hBmsUart.Init.Parity = UART_PARITY_NONE;

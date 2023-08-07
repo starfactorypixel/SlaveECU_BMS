@@ -29,25 +29,25 @@ namespace CANLib
 	// request | timer:15000
 	// byte	1 + 7	{ type[0] data[1..7] }
 	// Основная информация о блоке. См. "Системные параметры".
-	CANObject<uint8_t, 7> obj_block_info(0x0040, 15000, 300, true);
+	CANObject<uint8_t, 7> obj_block_info(0x0040);
 
 	// 0x0041	BlockHealth
 	// request | event
 	// byte	1 + 7	{ type[0] data[1..7] }
 	// Информация о здоровье блока. См. "Системные параметры".
-	CANObject<uint8_t, 7> obj_block_health(0x0041, CAN_TIMER_DISABLED, 300);
+	CANObject<uint8_t, 7> obj_block_health(0x0041);
 
 	// 0x0042	BlockCfg
 	// request
 	// byte	1 + 1 + X	{ type[0] param[1] data[2..7] }
 	// Чтение и запись настроек блока. См. "Системные параметры".
-	CANObject<uint8_t, 7> obj_block_cfg(0x0042, CAN_TIMER_DISABLED, CAN_ERROR_DISABLED);
+	CANObject<uint8_t, 7> obj_block_features(0x0042);
 
 	// 0x0043	BlockError
 	// request | event
 	// byte	1 + X	{ type[0] data[1..7] }
 	// Ошибки блока. См. "Системные параметры".
-	CANObject<uint8_t, 7> obj_block_error(0x0043, CAN_TIMER_DISABLED, 300);
+	CANObject<uint8_t, 7> obj_block_error(0x0043);
 
 	// ******************** specific blocks ********************
 
@@ -157,10 +157,16 @@ namespace CANLib
 
 	inline void Setup()
 	{
+		// system blocks
+		set_block_info_params(obj_block_info);
+		set_block_health_params(obj_block_health);
+		set_block_features_params(obj_block_features);
+		set_block_error_params(obj_block_error);
+
 		// common blocks
 		can_manager.RegisterObject(obj_block_info);
 		can_manager.RegisterObject(obj_block_health);
-		can_manager.RegisterObject(obj_block_cfg);
+		can_manager.RegisterObject(obj_block_features);
 		can_manager.RegisterObject(obj_block_error);
 
 		// specific blocks
