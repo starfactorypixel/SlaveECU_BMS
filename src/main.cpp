@@ -81,17 +81,28 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
         return;
 
     // Check BMS packet header
-    uint32_t *BMS_header = (uint32_t *)receiveBuff_hBmsUart;
-    if (*BMS_header == BMS_PACKET_HEADER && Size >= BMS_BOARD_PACKET_SIZE)
+    //uint32_t *BMS_header = (uint32_t *)receiveBuff_hBmsUart;
+    //if (*BMS_header == BMS_PACKET_HEADER && Size >= BMS_BOARD_PACKET_SIZE)
     {
-        // set flag that BMS packet received
-        FlagReciveUART3 = 1;
-
         // fill the BMS structure with data
         memcpy(&bms_packet_data, receiveBuff_hBmsUart, BMS_BOARD_PACKET_SIZE);
+
+        // set flag that BMS packet received
+        FlagReciveUART3 = 1;
     }
 
     HAL_UARTEx_ReceiveToIdle_IT(&hBmsUart, (uint8_t *)receiveBuff_hBmsUart, UART3_BUFF_SIZE);
+}
+
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
+{
+    if(huart->Instance == USART3)
+    {
+        DEBUG_LOG_TOPIC("uart3", "ERR: %d\r\n", huart->ErrorCode);
+
+        HAL_UART_AbortReceive_IT(&hBmsUart);
+        HAL_UARTEx_ReceiveToIdle_IT(&hBmsUart, (uint8_t *)receiveBuff_hBmsUart, UART3_BUFF_SIZE);
+    }
 }
 
 //-------------------------------- Прерывание от таймера TIM1
@@ -301,6 +312,7 @@ int main(void)
     {
         if (FlagReciveUART3 == 1)
         {
+			DEBUG_LOG_ARRAY_HEX("BMS2", bms_packet_data, sizeof(bms_packet_data));
             CANLib::UpdateCANObjects_BMS(bms_packet_data);
             FlagReciveUART3 = 0;
         }

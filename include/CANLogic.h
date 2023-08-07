@@ -265,6 +265,7 @@ namespace CANLib
 
 	void UpdateCANObjects_BMS(uint8_t bms_raw_packet_data[BMS_BOARD_PACKET_SIZE])
 	{
+		/*
 		uint32_t *BMS_header = (uint32_t *)bms_raw_packet_data;
 		if (*BMS_header != BMS_PACKET_HEADER)
 		{
@@ -277,6 +278,7 @@ namespace CANLib
 			DEBUG_LOG("ERROR: BMS CRC error! Expected: 0x%04X, presented: 0x%04X", bms_raw_data_crc(bms_raw_packet_data), get_bms_raw_data_crc(bms_raw_packet_data));
 			return;
 		}
+		*/
 
 		// reverse_array(bms_raw_packet_data, BMS_BOARD_PACKET_SIZE);
 		// packet_structure_reversed_t *reversed_bms_packet = (packet_structure_reversed_t *)bms_raw_packet_data;
