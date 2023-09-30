@@ -19,6 +19,7 @@
 #include "main.h"
 #include "ds18b20.h"
 #include "BMS_low_level_abstraction.h"
+#include <ConstantLibrary.h>
 #include <LoggerLibrary.h>
 #include <About.h>
 #include <Leds.h>
