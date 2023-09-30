@@ -62,7 +62,7 @@ uint8_t bms_packet_data[BMS_BOARD_PACKET_SIZE] = {0};
 // collected sensor's temperatures
 //    t[0]..t[ADC_CHANNEL_COUNT-1] - external temperature sensors (ADC)
 //    t[ADC_CHANNEL_COUNT]..t[max] - external temperature sensors (ds18b20)
-int8_t temperatures[ADC_CHANNEL_COUNT + MAX_DS18B20_COUNT];
+int8_t temperatures[ADC_CHANNEL_COUNT + MAX_DS18B20_COUNT] = {0};
 
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);

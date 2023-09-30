@@ -312,7 +312,7 @@ namespace CANLib
 		// all: NORMAL
 		// Общее напряжение АКБ
 		swap_endian(bms_packet_struct->voltage);
-		obj_high_voltage.SetValue(bms_packet_struct->voltage * 10, CAN_TIMER_TYPE_NORMAL); // BMS reports voltage in 10 mV/bit, we need 100 mV/bit
+		obj_high_voltage.SetValue(bms_packet_struct->voltage, CAN_TIMER_TYPE_NORMAL); // BMS reports voltage in 10 mV/bit, we need 100 mV/bit
 
 		// 0x0045	HighCurrent
 		// request | timer:1000
@@ -320,7 +320,7 @@ namespace CANLib
 		// Ограничения: all: NORMAL
 		// Общий ток разряда / заряда АКБ
 		swap_endian(bms_packet_struct->current);
-		obj_high_current.SetValue(0, bms_packet_struct->current * 100, CAN_TIMER_TYPE_NORMAL); // 100mA/bit
+		obj_high_current.SetValue(0, bms_packet_struct->current, CAN_TIMER_TYPE_NORMAL); // 100mA/bit
 
 		// 0x0046	MaxTemperature
 		// we will set it at the end of the update
@@ -509,7 +509,8 @@ namespace CANLib
 		// all: NORMAL
 		// Общая мощность потребления / зарядки.
 		// BMS data endian is already swapped
-		obj_battery_power.SetValue(0, bms_packet_struct->voltage * bms_packet_struct->current / 100000, CAN_TIMER_TYPE_NORMAL);
+		//obj_battery_power.SetValue(0, bms_packet_struct->voltage * bms_packet_struct->current / 100000, CAN_TIMER_TYPE_NORMAL);
+		obj_battery_power.SetValue(0, bms_packet_struct->power, CAN_TIMER_TYPE_NORMAL);
 
 		// 0x0046	MaxTemperature
 		// request | timer:5000 | event
