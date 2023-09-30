@@ -286,20 +286,28 @@ namespace CANLib
 
 	void UpdateCANObjects_BMS(uint8_t bms_raw_packet_data[BMS_BOARD_PACKET_SIZE])
 	{
-		/*
-		uint32_t *BMS_header = (uint32_t *)bms_raw_packet_data;
-		if (*BMS_header != BMS_PACKET_HEADER)
-		{
-			DEBUG_LOG("ERROR: BMS header error! Expected: 0x%08X, presented: 0x%08lX", BMS_PACKET_HEADER, *BMS_header);
-			return;
-		}
 
-		if (!bms_raw_data_validation(bms_raw_packet_data))
+		uint32_t *BMS_header = (uint32_t *)bms_raw_packet_data;
+		if (*BMS_header != 0xFFAA55AA)
 		{
-			DEBUG_LOG("ERROR: BMS CRC error! Expected: 0x%04X, presented: 0x%04X", bms_raw_data_crc(bms_raw_packet_data), get_bms_raw_data_crc(bms_raw_packet_data));
+			DEBUG_LOG("ERROR: BMS header error! Expected: 0x%08X, presented: 0x%08lX", 0xFFAA55AA, *BMS_header);
+			
 			return;
 		}
-		*/
+		
+		uint16_t crc = 0x0000;
+		for(uint8_t i = 4; i < 138; ++i)
+		{
+			crc += bms_raw_packet_data[i];
+		}
+		if( ((crc >> 8) & 0xFF) != bms_raw_packet_data[138] || (crc & 0xFF) != bms_raw_packet_data[139])
+		{
+			//DEBUG_LOG("ERROR: BMS CRC error! Expected: 0x%04X, presented: 0x%04X", bms_raw_data_crc(bms_raw_packet_data), get_bms_raw_data_crc(bms_raw_packet_data));
+			DEBUG_LOG("ERROR: BMS CRC error!");
+			
+			return;
+		}
+		
 
 		// reverse_array(bms_raw_packet_data, BMS_BOARD_PACKET_SIZE);
 		// packet_structure_reversed_t *reversed_bms_packet = (packet_structure_reversed_t *)bms_raw_packet_data;
