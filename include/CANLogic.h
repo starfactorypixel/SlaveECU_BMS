@@ -14,7 +14,7 @@ namespace CANLib
 	//*********************************************************************
 
 	/// @brief Number of CANObjects in CANManager
-	static constexpr uint8_t CFG_CANObjectsCount = 21;
+	static constexpr uint8_t CFG_CANObjectsCount = 24;
 
 	/// @brief The size of CANManager's internal CAN frame buffer
 	static constexpr uint8_t CFG_CANFrameBufferSize = 16;
@@ -167,11 +167,11 @@ namespace CANLib
 	CANObject<uint8_t, 1> obj_battery_percent(0x0056, 10000);
 
 	// 0x0057	BatteryPower
-	// request | timer:1000
+	// request | timer:250
 	// int16_t	Вт	1 + 2	{ type[0] w[1..2] }
 	// all: NORMAL
 	// Общая мощность потребления / зарядки.
-	CANObject<int16_t, 1> obj_battery_power(0x0057, 1000);
+	CANObject<int16_t, 1> obj_battery_power(0x0057, 250);
 
 	inline void Setup()
 	{
