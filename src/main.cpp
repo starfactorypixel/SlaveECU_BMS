@@ -313,7 +313,8 @@ int main(void)
     {
         if (FlagReciveUART3 == 1)
         {
-			DEBUG_LOG_ARRAY_HEX("BMS2", bms_packet_data, sizeof(bms_packet_data));
+			//DEBUG_LOG_ARRAY_HEX("BMS2", bms_packet_data, sizeof(bms_packet_data));
+			DEBUG_LOG_TOPIC("BMS2", "RX loop()\n");
             CANLib::UpdateCANObjects_BMS(bms_packet_data);
             FlagReciveUART3 = 0;
         }

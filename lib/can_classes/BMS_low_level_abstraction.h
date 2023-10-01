@@ -24,8 +24,8 @@ extern "C"
 
         uint16_t voltage;                                    // Напряжение на всей АКБ, x10 мВ.
         uint16_t cells_voltage[BMS_BATTERY_NUMBER_OF_CELLS]; // Напряжение на каждой из 32-х ячеек АКБ, мВ.
-        uint16_t reserved_70;                                //
-        int16_t current;                                     // Ток разряда или заряда, мА.
+        //uint16_t reserved_70;                                //
+        int32_t current;                                     // Ток разряда или заряда, мА.
 
         uint8_t percent;         // Оставшаяся ёмкость АКБ, проценты.
         uint32_t phy_capacity;   // Фактическая ёмкость АКБ, мА/ч.
@@ -48,7 +48,7 @@ extern "C"
         uint16_t tire_length; // WAT?
         uint16_t pulses_num;  // WAT?
         uint8_t relay;        // WAT?
-        uint32_t power;       // Текущая мощность, Вт.
+        int32_t power;       // Текущая мощность, Вт.
 
         uint8_t vmax_cell;     // Номер ячейки батареи с максимальным напряжением.
         uint16_t vmax_voltage; // Напряжение ячейки батареи с максимальным напряжением, мВ.
