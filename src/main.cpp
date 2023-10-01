@@ -16,6 +16,7 @@
  ******************************************************************************
  */
 
+#include <math.h>
 #include "main.h"
 #include "ds18b20.h"
 #include "BMS_low_level_abstraction.h"
@@ -165,9 +166,15 @@ void HAL_CAN_Send(can_object_id_t id, uint8_t *data, uint8_t length)
     }
 }
 
-inline int8_t ADCtoTEMPER(uint16_t adc_val)
+int8_t ADCtoTEMPER(uint16_t adc_val)
 {
-    return ((adc_val & 0x07FF) >> 6);
+    if(adc_val == 0 || adc_val > 4095) return 0;
+    
+    float result = adc_val;
+    result = 1 / (4095.0f / adc_val - 1);
+    result = (log(result) / 3950) + 1.0 / (25 + 273.15);
+    
+    return (1.0 / result - 273.15);
 }
 
 /// @brief Reads temperature from ADC sensors
@@ -177,11 +184,17 @@ void readADC()
     //    t[0]..t[ADC_CHANNEL_COUNT-1] - external temperature sensors (ADC)
     //    t[ADC_CHANNEL_COUNT]..t[max] - external temperature sensors (ds18b20)
 
-    memcpy(ADC_senors, ADC_value, ADC_CHANNEL_COUNT);
+    memcpy( ADC_senors, ADC_value, (ADC_CHANNEL_COUNT * sizeof(ADC_value[0])) );
 
-    for (uint8_t i = 0; i < ADC_CHANNEL_COUNT; i++)
+    for (uint8_t i = 0; i < ADC_CHANNEL_COUNT; ++i)
     {
-        temperatures[i] = ADCtoTEMPER(ADC_senors[i - 6]);
+        if(ADC_senors[i] < 95U || ADC_senors[i] > 4000U)
+        {
+            temperatures[i + 6] = 0U;
+            continue;
+        }
+        
+        temperatures[i + 6] = ADCtoTEMPER(ADC_senors[i]);
     }
 }
 
