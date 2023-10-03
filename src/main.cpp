@@ -171,10 +171,10 @@ int8_t ADCtoTEMPER(uint16_t adc_val)
     if(adc_val == 0 || adc_val > 4095) return 0;
     
     float result = adc_val;
-    result = 1 / (4095.0f / adc_val - 1);
-    result = (log(result) / 3950) + 1.0 / (25 + 273.15);
+    result = 1.0f / ((4095.0f / result) - 1);
+    result = (log(result) / 3950.0f) + (1.0f / (25.0f + 273.15f));
     
-    return (1.0 / result - 273.15);
+    return ((1.0f / result) - 273.15f);
 }
 
 /// @brief Reads temperature from ADC sensors
@@ -188,6 +188,8 @@ void readADC()
 
     for (uint8_t i = 0; i < ADC_CHANNEL_COUNT; ++i)
     {
+		DEBUG_LOG_TOPIC("ADC", "In: %2d, val: %4d\n", i+6, ADC_senors[i]);
+
         if(ADC_senors[i] < 95U || ADC_senors[i] > 4000U)
         {
             temperatures[i + 6] = 0U;
@@ -318,6 +320,8 @@ int main(void)
     InitDS18B20();
 
     // запустить в цикле опрос 10 каналов ADC через DMA
+	#warning stop-calibration-start ?
+	HAL_ADCEx_Calibration_Start(&hadc1);
     HAL_ADC_Start_DMA(&hadc1, (uint32_t *)ADC_value, ADC_CHANNEL_COUNT);
 
     uint32_t last_tick1 = HAL_GetTick();
