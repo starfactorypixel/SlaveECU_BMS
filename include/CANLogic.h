@@ -251,19 +251,19 @@ namespace CANLib
 
 		for (uint8_t i = 0; i < 7; i++)
 		{
-			curr_temp = obj_temperature_1.GetTypedValue(i);
+			curr_temp = obj_temperature_1.GetValue(i);
 			if (curr_temp > max_temp)
 				max_temp = curr_temp;
 		}
 		for (uint8_t i = 0; i < 7; i++)
 		{
-			curr_temp = obj_temperature_2.GetTypedValue(i);
+			curr_temp = obj_temperature_2.GetValue(i);
 			if (curr_temp > max_temp)
 				max_temp = curr_temp;
 		}
 		for (uint8_t i = 0; i < 7; i++)
 		{
-			curr_temp = obj_temperature_3.GetTypedValue(i);
+			curr_temp = obj_temperature_3.GetValue(i);
 			if (curr_temp > max_temp)
 				max_temp = curr_temp;
 		}
