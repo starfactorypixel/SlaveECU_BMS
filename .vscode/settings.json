@@ -1,4 +1,5 @@
 {
 	"files.encoding": "utf8",
-	"cmake.configureOnOpen": false
+	"cmake.configureOnOpen": false,
+	"CodeGPT.query.language": "Russian"
 }

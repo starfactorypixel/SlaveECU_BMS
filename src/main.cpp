@@ -16,13 +16,16 @@
  ******************************************************************************
  */
 
+#include <math.h>
 #include "main.h"
 #include "ds18b20.h"
 #include "BMS_low_level_abstraction.h"
+#include <ConstantLibrary.h>
 #include <LoggerLibrary.h>
 #include <About.h>
 #include <Leds.h>
 #include <CANLogic.h>
+#include <BMSLogic.h>
 
 #define MARKER_FIRST_START 100 // Маркер что flash не пустая
 
@@ -39,7 +42,7 @@ DMA_HandleTypeDef hdma_adc1;
 CAN_HandleTypeDef hcan;
 TIM_HandleTypeDef htim1;
 UART_HandleTypeDef hDebugUart;
-UART_HandleTypeDef huart3;
+UART_HandleTypeDef hBmsUart;
 
 //------------------------  Ds18b20
 #define MAX_DS18B20_COUNT 8 // TODO: почему 8?! Вроде по описанию в гуглотаблице максимум 6 должно быть...
@@ -53,14 +56,14 @@ uint16_t ADC_cnt = 0;
 uint16_t ADC_senors[ADC_CHANNEL_COUNT];
 
 //------------------------ UART
-uint8_t receiveBuff_huart3[UART3_BUFF_SIZE];
+uint8_t receiveBuff_hBmsUart[UART3_BUFF_SIZE];
 uint8_t FlagReciveUART3 = 0;
 uint8_t bms_packet_data[BMS_BOARD_PACKET_SIZE] = {0};
 
 // collected sensor's temperatures
 //    t[0]..t[ADC_CHANNEL_COUNT-1] - external temperature sensors (ADC)
 //    t[ADC_CHANNEL_COUNT]..t[max] - external temperature sensors (ds18b20)
-int8_t temperatures[ADC_CHANNEL_COUNT + MAX_DS18B20_COUNT];
+int8_t temperatures[ADC_CHANNEL_COUNT + MAX_DS18B20_COUNT] = {0};
 
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
@@ -80,17 +83,28 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
         return;
 
     // Check BMS packet header
-    uint32_t *BMS_header = (uint32_t *)receiveBuff_huart3;
-    if (*BMS_header == BMS_PACKET_HEADER && Size >= BMS_BOARD_PACKET_SIZE)
+    //uint32_t *BMS_header = (uint32_t *)receiveBuff_hBmsUart;
+    //if (*BMS_header == BMS_PACKET_HEADER && Size >= BMS_BOARD_PACKET_SIZE)
     {
+        // fill the BMS structure with data
+        memcpy(&bms_packet_data, receiveBuff_hBmsUart, BMS_BOARD_PACKET_SIZE);
+
         // set flag that BMS packet received
         FlagReciveUART3 = 1;
-
-        // fill the BMS structure with data
-        memcpy(&bms_packet_data, receiveBuff_huart3, BMS_BOARD_PACKET_SIZE);
     }
 
-    HAL_UARTEx_ReceiveToIdle_IT(&huart3, (uint8_t *)receiveBuff_huart3, UART3_BUFF_SIZE);
+    HAL_UARTEx_ReceiveToIdle_IT(&hBmsUart, (uint8_t *)receiveBuff_hBmsUart, UART3_BUFF_SIZE);
+}
+
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
+{
+    if(huart->Instance == USART3)
+    {
+        DEBUG_LOG_TOPIC("uart3", "ERR: %d\r\n", huart->ErrorCode);
+
+        HAL_UART_AbortReceive_IT(&hBmsUart);
+        HAL_UARTEx_ReceiveToIdle_IT(&hBmsUart, (uint8_t *)receiveBuff_hBmsUart, UART3_BUFF_SIZE);
+    }
 }
 
 //-------------------------------- Прерывание от таймера TIM1
@@ -100,12 +114,12 @@ void IRQHandlerTIM1(void)
 
 /// @brief Callback function of CAN receiver.
 /// @param hcan Pointer to the structure that contains CAN configuration.
-void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
+void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 {
     CAN_RxHeaderTypeDef RxHeader;
     uint8_t RxData[8] = {0};
 
-    if (HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO1, &RxHeader, RxData) == HAL_OK)
+    if (HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &RxHeader, RxData) == HAL_OK)
     {
         CANLib::can_manager.IncomingCANFrame(RxHeader.StdId, RxData, RxHeader.DLC);
         // DEBUG_LOG("RX: CAN 0x%04lX", RxHeader.StdId);
@@ -152,9 +166,15 @@ void HAL_CAN_Send(can_object_id_t id, uint8_t *data, uint8_t length)
     }
 }
 
-inline int8_t ADCtoTEMPER(uint16_t adc_val)
+int8_t ADCtoTEMPER(uint16_t adc_val)
 {
-    return ((adc_val & 0x07FF) >> 6);
+    if(adc_val == 0 || adc_val > 4095) return 0;
+    
+    float result = adc_val;
+    result = 1.0f / ((4095.0f / result) - 1);
+    result = (log(result) / 3950.0f) + (1.0f / (25.0f + 273.15f));
+    
+    return ((1.0f / result) - 273.15f);
 }
 
 /// @brief Reads temperature from ADC sensors
@@ -164,11 +184,19 @@ void readADC()
     //    t[0]..t[ADC_CHANNEL_COUNT-1] - external temperature sensors (ADC)
     //    t[ADC_CHANNEL_COUNT]..t[max] - external temperature sensors (ds18b20)
 
-    memcpy(ADC_senors, ADC_value, ADC_CHANNEL_COUNT);
+    memcpy( ADC_senors, ADC_value, (ADC_CHANNEL_COUNT * sizeof(ADC_value[0])) );
 
-    for (uint8_t i = 0; i < ADC_CHANNEL_COUNT; i++)
+    for (uint8_t i = 0; i < ADC_CHANNEL_COUNT; ++i)
     {
-        temperatures[i] = ADCtoTEMPER(ADC_senors[i - 6]);
+		DEBUG_LOG_TOPIC("ADC", "In: %2d, val: %4d\n", i+5, ADC_senors[i]);
+
+        if(ADC_senors[i] < 95U || ADC_senors[i] > 4000U)
+        {
+            temperatures[i + 6] = 0U;
+            continue;
+        }
+        
+        temperatures[i + 6] = ADCtoTEMPER(ADC_senors[i]);
     }
 }
 
@@ -193,13 +221,13 @@ void read_ds18b20()
     for (uint8_t i = 1; i <= Dev_Cnt; i++)
     {
         ds18b20_ReadStratcpad(NO_SKIP_ROM, dt, i);
-        DEBUG_LOG("STRATHPAD %d: %02X %02X %02X %02X %02X %02X %02X %02X",
+        DEBUG_LOG_TOPIC("DS18b", "STRATHPAD %d: %02X %02X %02X %02X %02X %02X %02X %02X\n",
                i, dt[0], dt[1], dt[2], dt[3], dt[4], dt[5], dt[6], dt[7]);
 
         raw_temper = ((uint16_t)dt[1] << 8) | dt[0];
         temper = ds18b20_Convert(raw_temper);
 
-        DEBUG_LOG("Raw t: 0x%04X; t: %s%.2f\n", raw_temper, (ds18b20_GetSign(raw_temper)) ? "-" : "+", temper);
+        DEBUG_LOG_TOPIC("DS18b", "Raw t: 0x%04X; t: %s%.2f\n", raw_temper, (ds18b20_GetSign(raw_temper)) ? "-" : "+", temper);
 
         // int8_t temperatures[ADC_CHANNEL_COUNT + MAX_DS18B20_COUNT];
         //    t[0]..t[ADC_CHANNEL_COUNT-1] - external temperature sensors (ADC)
@@ -228,18 +256,18 @@ void InitPeripherals()
 void InitDS18B20()
 {
     port_init();
-    DEBUG_LOG("Init Status: %d", ds18b20_init(NO_SKIP_ROM));
-    DEBUG_LOG("Dev count: %d", Dev_Cnt);
+    DEBUG_LOG_TOPIC("DS18b", "Init Status: %d\n", ds18b20_init(NO_SKIP_ROM));
+    DEBUG_LOG_TOPIC("DS18b", "Dev count: %d\n", Dev_Cnt);
     for (uint8_t i = 1; i <= Dev_Cnt; i++)
     {
-        DEBUG_LOG("Device %d", i);
-        DEBUG_LOG("ROM RAW: %02X %02X %02X %02X %02X %02X %02X %02X",
+        DEBUG_LOG_TOPIC("DS18b", "Device %d\n", i);
+        DEBUG_LOG_TOPIC("DS18b", "ROM RAW: %02X %02X %02X %02X %02X %02X %02X %02X\n",
             Dev_ID[i - 1][0], Dev_ID[i - 1][1], Dev_ID[i - 1][2], Dev_ID[i - 1][3],
             Dev_ID[i - 1][4], Dev_ID[i - 1][5], Dev_ID[i - 1][6], Dev_ID[i - 1][7]);
-        DEBUG_LOG("Family CODE: 0x%02X", Dev_ID[i - 1][0]);
-        DEBUG_LOG("ROM CODE: 0x%02X%02X%02X%02X%02X%02X\r\n", Dev_ID[i - 1][6], Dev_ID[i - 1][5],
+        DEBUG_LOG_TOPIC("DS18b", "Family CODE: 0x%02X\n", Dev_ID[i - 1][0]);
+        DEBUG_LOG_TOPIC("DS18b", "ROM CODE: 0x%02X%02X%02X%02X%02X%02X\n", Dev_ID[i - 1][6], Dev_ID[i - 1][5],
             Dev_ID[i - 1][4], Dev_ID[i - 1][3], Dev_ID[i - 1][2], Dev_ID[i - 1][1]);
-        DEBUG_LOG("CRC: 0x%02X\r\n", Dev_ID[i - 1][7]);
+        DEBUG_LOG_TOPIC("DS18b", "CRC: 0x%02X\n", Dev_ID[i - 1][7]);
     }
 }
 
@@ -275,13 +303,13 @@ int main(void)
     Leds::Setup();
 
     /* активируем события которые будут вызывать прерывания  */
-    HAL_CAN_ActivateNotification(&hcan, CAN_IT_RX_FIFO1_MSG_PENDING | CAN_IT_ERROR | CAN_IT_BUSOFF | CAN_IT_LAST_ERROR_CODE);
+    HAL_CAN_ActivateNotification(&hcan, CAN_IT_RX_FIFO0_MSG_PENDING | CAN_IT_ERROR | CAN_IT_BUSOFF | CAN_IT_LAST_ERROR_CODE);
 
     HAL_CAN_Start(&hcan);
     CANLib::Setup();
 
     /* активируем прерывания USART3*/
-    HAL_UARTEx_ReceiveToIdle_IT(&huart3, (uint8_t *)receiveBuff_huart3, UART3_BUFF_SIZE);
+    HAL_UARTEx_ReceiveToIdle_IT(&hBmsUart, (uint8_t *)receiveBuff_hBmsUart, UART3_BUFF_SIZE);
     
     // CAN MCP2562
     // if we need normal CAN operation then STBY pin should be LOW
@@ -292,6 +320,8 @@ int main(void)
     InitDS18B20();
 
     // запустить в цикле опрос 10 каналов ADC через DMA
+	#warning stop-calibration-start ?
+	HAL_ADCEx_Calibration_Start(&hadc1);
     HAL_ADC_Start_DMA(&hadc1, (uint32_t *)ADC_value, ADC_CHANNEL_COUNT);
 
     uint32_t last_tick1 = HAL_GetTick();
@@ -300,6 +330,8 @@ int main(void)
     {
         if (FlagReciveUART3 == 1)
         {
+			//DEBUG_LOG_ARRAY_HEX("BMS2", bms_packet_data, sizeof(bms_packet_data));
+			DEBUG_LOG_TOPIC("BMS2", "RX loop()\n");
             CANLib::UpdateCANObjects_BMS(bms_packet_data);
             FlagReciveUART3 = 0;
         }
@@ -317,6 +349,7 @@ int main(void)
         About::Loop(current_time);
         Leds::Loop(current_time);
         CANLib::Loop(current_time);
+        BMSLogic::Loop(current_time);
     }
 }
 
@@ -476,25 +509,29 @@ static void MX_ADC1_Init(void)
  */
 static void MX_CAN_Init(void)
 {
+    // https://istarik.ru/blog/stm32/159.html
+
     CAN_FilterTypeDef sFilterConfig;
 
+    // CAN interface initialization
     hcan.Instance = CAN1;
     hcan.Init.Prescaler = 4;
-    hcan.Init.Mode = CAN_MODE_NORMAL;
+    hcan.Init.Mode = CAN_MODE_NORMAL; // CAN_MODE_NORMAL
     hcan.Init.SyncJumpWidth = CAN_SJW_1TQ;
     hcan.Init.TimeSeg1 = CAN_BS1_13TQ;
     hcan.Init.TimeSeg2 = CAN_BS2_2TQ;
-    hcan.Init.TimeTriggeredMode = DISABLE;
-    hcan.Init.AutoBusOff = DISABLE;
-    hcan.Init.AutoWakeUp = DISABLE;
-    hcan.Init.AutoRetransmission = DISABLE;
-    hcan.Init.ReceiveFifoLocked = DISABLE;
-    hcan.Init.TransmitFifoPriority = DISABLE;
+    hcan.Init.TimeTriggeredMode = DISABLE;   // DISABLE
+    hcan.Init.AutoBusOff = ENABLE;           // DISABLE
+    hcan.Init.AutoWakeUp = ENABLE;           // DISABLE
+    hcan.Init.AutoRetransmission = DISABLE;  // DISABLE
+    hcan.Init.ReceiveFifoLocked = ENABLE;    // DISABLE
+    hcan.Init.TransmitFifoPriority = ENABLE; // DISABLE
     if (HAL_CAN_Init(&hcan) != HAL_OK)
     {
         Error_Handler();
     }
 
+    // CAN filtering initialization
     sFilterConfig.FilterBank = 0;
     sFilterConfig.FilterMode = CAN_FILTERMODE_IDMASK;
     sFilterConfig.FilterScale = CAN_FILTERSCALE_32BIT;
@@ -502,10 +539,9 @@ static void MX_CAN_Init(void)
     sFilterConfig.FilterIdLow = 0x0000;
     sFilterConfig.FilterMaskIdHigh = 0x0000;
     sFilterConfig.FilterMaskIdLow = 0x0000;
-    sFilterConfig.FilterFIFOAssignment = CAN_RX_FIFO1;
+    sFilterConfig.FilterFIFOAssignment = CAN_RX_FIFO0;
     sFilterConfig.FilterActivation = ENABLE;
     // sFilterConfig.SlaveStartFilterBank = 14;
-
     if (HAL_CAN_ConfigFilter(&hcan, &sFilterConfig) != HAL_OK)
     {
         Error_Handler();
@@ -554,7 +590,7 @@ static void MX_TIM1_Init(void)
 static void MX_USART1_UART_Init(void)
 {
     hDebugUart.Instance = USART1;
-    hDebugUart.Init.BaudRate = 115200;
+    hDebugUart.Init.BaudRate = 500000;
     hDebugUart.Init.WordLength = UART_WORDLENGTH_8B;
     hDebugUart.Init.StopBits = UART_STOPBITS_1;
     hDebugUart.Init.Parity = UART_PARITY_NONE;
@@ -574,15 +610,15 @@ static void MX_USART1_UART_Init(void)
  */
 static void MX_USART3_UART_Init(void)
 {
-    huart3.Instance = USART3;
-    huart3.Init.BaudRate = 115200;
-    huart3.Init.WordLength = UART_WORDLENGTH_8B;
-    huart3.Init.StopBits = UART_STOPBITS_1;
-    huart3.Init.Parity = UART_PARITY_NONE;
-    huart3.Init.Mode = UART_MODE_TX_RX;
-    huart3.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-    huart3.Init.OverSampling = UART_OVERSAMPLING_16;
-    if (HAL_UART_Init(&huart3) != HAL_OK)
+    hBmsUart.Instance = USART3;
+    hBmsUart.Init.BaudRate = 19200;
+    hBmsUart.Init.WordLength = UART_WORDLENGTH_8B;
+    hBmsUart.Init.StopBits = UART_STOPBITS_1;
+    hBmsUart.Init.Parity = UART_PARITY_NONE;
+    hBmsUart.Init.Mode = UART_MODE_TX_RX;
+    hBmsUart.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+    hBmsUart.Init.OverSampling = UART_OVERSAMPLING_16;
+    if (HAL_UART_Init(&hBmsUart) != HAL_OK)
     {
         Error_Handler();
     }
@@ -663,15 +699,15 @@ static void MX_GPIO_Init(void)
 /*
 static void MX_USART3_UART8b_Init(void)
 {
-    huart3.Instance = USART3;
-    huart3.Init.BaudRate = 115200;
-    huart3.Init.WordLength = UART_WORDLENGTH_8B;
-    huart3.Init.StopBits = UART_STOPBITS_1;
-    huart3.Init.Parity = UART_PARITY_NONE;
-    huart3.Init.Mode = UART_MODE_TX_RX;
-    huart3.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-    huart3.Init.OverSampling = UART_OVERSAMPLING_16;
-    if (HAL_UART_Init(&huart3) != HAL_OK)
+    hBmsUart.Instance = USART3;
+    hBmsUart.Init.BaudRate = 115200;
+    hBmsUart.Init.WordLength = UART_WORDLENGTH_8B;
+    hBmsUart.Init.StopBits = UART_STOPBITS_1;
+    hBmsUart.Init.Parity = UART_PARITY_NONE;
+    hBmsUart.Init.Mode = UART_MODE_TX_RX;
+    hBmsUart.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+    hBmsUart.Init.OverSampling = UART_OVERSAMPLING_16;
+    if (HAL_UART_Init(&hBmsUart) != HAL_OK)
     {
         Error_Handler();
     }

@@ -6,7 +6,6 @@
 void HAL_CAN_Send(can_object_id_t id, uint8_t *data, uint8_t length);
 
 extern CAN_HandleTypeDef hcan;
-extern UART_HandleTypeDef huart1;
 
 namespace CANLib
 {
@@ -15,7 +14,7 @@ namespace CANLib
 	//*********************************************************************
 
 	/// @brief Number of CANObjects in CANManager
-	static constexpr uint8_t CFG_CANObjectsCount = 21;
+	static constexpr uint8_t CFG_CANObjectsCount = 24;
 
 	/// @brief The size of CANManager's internal CAN frame buffer
 	static constexpr uint8_t CFG_CANFrameBufferSize = 16;
@@ -30,25 +29,25 @@ namespace CANLib
 	// request | timer:15000
 	// byte	1 + 7	{ type[0] data[1..7] }
 	// Основная информация о блоке. См. "Системные параметры".
-	CANObject<uint8_t, 7> obj_block_info(0x0040, 15000, 300, true);
+	CANObject<uint8_t, 7> obj_block_info(0x0040);
 
 	// 0x0041	BlockHealth
 	// request | event
 	// byte	1 + 7	{ type[0] data[1..7] }
 	// Информация о здоровье блока. См. "Системные параметры".
-	CANObject<uint8_t, 7> obj_block_health(0x0041, CAN_TIMER_DISABLED, 300);
+	CANObject<uint8_t, 7> obj_block_health(0x0041);
 
 	// 0x0042	BlockCfg
 	// request
 	// byte	1 + 1 + X	{ type[0] param[1] data[2..7] }
 	// Чтение и запись настроек блока. См. "Системные параметры".
-	CANObject<uint8_t, 7> obj_block_cfg(0x0042, CAN_TIMER_DISABLED, CAN_ERROR_DISABLED);
+	CANObject<uint8_t, 7> obj_block_features(0x0042);
 
 	// 0x0043	BlockError
 	// request | event
 	// byte	1 + X	{ type[0] data[1..7] }
 	// Ошибки блока. См. "Системные параметры".
-	CANObject<uint8_t, 7> obj_block_error(0x0043, CAN_TIMER_DISABLED, 300);
+	CANObject<uint8_t, 7> obj_block_error(0x0043);
 
 	// ******************** specific blocks ********************
 
@@ -142,26 +141,50 @@ namespace CANLib
 	// Напряжение на банках: 22, 23, 24.
 	CANObject<uint16_t, 3> obj_low_voltage_22_24(0x0052);
 
-	// 0x0053	BatteryPercent
+	// 0x0053	LowVoltage25-27
+	// request
+	// uint16_t	мВ	1 + 2+2+2	{ type[0] v1[1..2] v2[3..4] v3[5..6] }
+	// Напряжение на банках: 25, 26, 27.
+	CANObject<uint16_t, 3> obj_low_voltage_25_27(0x0053);
+
+	// 0x0054	LowVoltage28-30
+	// request
+	// uint16_t	мВ	1 + 2+2+2	{ type[0] v1[1..2] v2[3..4] v3[5..6] }
+	// Напряжение на банках: 28, 29, 30.
+	CANObject<uint16_t, 3> obj_low_voltage_28_30(0x0054);
+
+	// 0x0055	LowVoltage31-33
+	// request
+	// uint16_t	мВ	1 + 2+2+2	{ type[0] v1[1..2] v2[3..4] v3[5..6] }
+	// Напряжение на банках: 31, 32, 33.
+	CANObject<uint16_t, 3> obj_low_voltage_31_33(0x0055);
+
+	// 0x0056	BatteryPercent
 	// request | timer:10000
 	// uint8_t	%	1 + 1	{ type[0] val[1] }
 	//	<30: WARN, <15: CRIT, else: NORMAL
 	// Уровень заряда АКБ, проценты.
-	CANObject<uint8_t, 1> obj_battery_percent(0x0053, 10000);
+	CANObject<uint8_t, 1> obj_battery_percent(0x0056, 10000);
 
-	// 0x0054	BatteryPower
-	// request | timer:1000
+	// 0x0057	BatteryPower
+	// request | timer:250
 	// int16_t	Вт	1 + 2	{ type[0] w[1..2] }
 	// all: NORMAL
 	// Общая мощность потребления / зарядки.
-	CANObject<int16_t, 1> obj_battery_power(0x0054, 1000);
+	CANObject<int16_t, 1> obj_battery_power(0x0057, 250);
 
 	inline void Setup()
 	{
+		// system blocks
+		set_block_info_params(obj_block_info);
+		set_block_health_params(obj_block_health);
+		set_block_features_params(obj_block_features);
+		set_block_error_params(obj_block_error);
+
 		// common blocks
 		can_manager.RegisterObject(obj_block_info);
 		can_manager.RegisterObject(obj_block_health);
-		can_manager.RegisterObject(obj_block_cfg);
+		can_manager.RegisterObject(obj_block_features);
 		can_manager.RegisterObject(obj_block_error);
 
 		// specific blocks
@@ -181,6 +204,9 @@ namespace CANLib
 		can_manager.RegisterObject(obj_low_voltage_16_18);
 		can_manager.RegisterObject(obj_low_voltage_19_21);
 		can_manager.RegisterObject(obj_low_voltage_22_24);
+		can_manager.RegisterObject(obj_low_voltage_25_27);
+		can_manager.RegisterObject(obj_low_voltage_28_30);
+		can_manager.RegisterObject(obj_low_voltage_31_33);
 		can_manager.RegisterObject(obj_battery_percent);
 		can_manager.RegisterObject(obj_battery_power);
 		
@@ -225,19 +251,19 @@ namespace CANLib
 
 		for (uint8_t i = 0; i < 7; i++)
 		{
-			curr_temp = obj_temperature_1.GetTypedValue(i);
+			curr_temp = obj_temperature_1.GetValue(i);
 			if (curr_temp > max_temp)
 				max_temp = curr_temp;
 		}
 		for (uint8_t i = 0; i < 7; i++)
 		{
-			curr_temp = obj_temperature_2.GetTypedValue(i);
+			curr_temp = obj_temperature_2.GetValue(i);
 			if (curr_temp > max_temp)
 				max_temp = curr_temp;
 		}
 		for (uint8_t i = 0; i < 7; i++)
 		{
-			curr_temp = obj_temperature_3.GetTypedValue(i);
+			curr_temp = obj_temperature_3.GetValue(i);
 			if (curr_temp > max_temp)
 				max_temp = curr_temp;
 		}
@@ -260,18 +286,28 @@ namespace CANLib
 
 	void UpdateCANObjects_BMS(uint8_t bms_raw_packet_data[BMS_BOARD_PACKET_SIZE])
 	{
-		uint32_t *BMS_header = (uint32_t *)bms_raw_packet_data;
-		if (*BMS_header != BMS_PACKET_HEADER)
-		{
-			DEBUG_LOG("ERROR: BMS header error! Expected: 0x%08X, presented: 0x%08lX", BMS_PACKET_HEADER, *BMS_header);
-			return;
-		}
 
-		if (!bms_raw_data_validation(bms_raw_packet_data))
+		uint32_t *BMS_header = (uint32_t *)bms_raw_packet_data;
+		if (*BMS_header != 0xFFAA55AA)
 		{
-			DEBUG_LOG("ERROR: BMS CRC error! Expected: 0x%04X, presented: 0x%04X", bms_raw_data_crc(bms_raw_packet_data), get_bms_raw_data_crc(bms_raw_packet_data));
+			DEBUG_LOG("ERROR: BMS header error! Expected: 0x%08X, presented: 0x%08lX", 0xFFAA55AA, *BMS_header);
+			
 			return;
 		}
+		
+		uint16_t crc = 0x0000;
+		for(uint8_t i = 4; i < 138; ++i)
+		{
+			crc += bms_raw_packet_data[i];
+		}
+		if( ((crc >> 8) & 0xFF) != bms_raw_packet_data[138] || (crc & 0xFF) != bms_raw_packet_data[139])
+		{
+			//DEBUG_LOG("ERROR: BMS CRC error! Expected: 0x%04X, presented: 0x%04X", bms_raw_data_crc(bms_raw_packet_data), get_bms_raw_data_crc(bms_raw_packet_data));
+			DEBUG_LOG("ERROR: BMS CRC error!");
+			
+			return;
+		}
+		
 
 		// reverse_array(bms_raw_packet_data, BMS_BOARD_PACKET_SIZE);
 		// packet_structure_reversed_t *reversed_bms_packet = (packet_structure_reversed_t *)bms_raw_packet_data;
@@ -284,7 +320,7 @@ namespace CANLib
 		// all: NORMAL
 		// Общее напряжение АКБ
 		swap_endian(bms_packet_struct->voltage);
-		obj_high_voltage.SetValue(bms_packet_struct->voltage * 10, CAN_TIMER_TYPE_NORMAL); // BMS reports voltage in 10 mV/bit, we need 100 mV/bit
+		obj_high_voltage.SetValue(0, bms_packet_struct->voltage, CAN_TIMER_TYPE_NORMAL); // BMS reports voltage in 10 mV/bit, we need 100 mV/bit
 
 		// 0x0045	HighCurrent
 		// request | timer:1000
@@ -292,7 +328,7 @@ namespace CANLib
 		// Ограничения: all: NORMAL
 		// Общий ток разряда / заряда АКБ
 		swap_endian(bms_packet_struct->current);
-		obj_high_current.SetValue(0, bms_packet_struct->current * 100, CAN_TIMER_TYPE_NORMAL); // 100mA/bit
+		obj_high_current.SetValue(0, bms_packet_struct->current, CAN_TIMER_TYPE_NORMAL); // 100mA/bit
 
 		// 0x0046	MaxTemperature
 		// we will set it at the end of the update
@@ -432,7 +468,34 @@ namespace CANLib
 			obj_low_voltage_22_24.SetValue(i, bms_packet_struct->cells_voltage[cells_voltage_index++]);
 		}
 
-		// 0x0053	BatteryPercent
+		for (uint8_t i = 0; i < 3; i++)
+		{
+			if (cells_voltage_index >= BMS_BATTERY_NUMBER_OF_CELLS)
+				break;
+
+			swap_endian(bms_packet_struct->cells_voltage[cells_voltage_index]);
+			obj_low_voltage_25_27.SetValue(i, bms_packet_struct->cells_voltage[cells_voltage_index++]);
+		}
+
+		for (uint8_t i = 0; i < 3; i++)
+		{
+			if (cells_voltage_index >= BMS_BATTERY_NUMBER_OF_CELLS)
+				break;
+
+			swap_endian(bms_packet_struct->cells_voltage[cells_voltage_index]);
+			obj_low_voltage_28_30.SetValue(i, bms_packet_struct->cells_voltage[cells_voltage_index++]);
+		}
+
+		for (uint8_t i = 0; i < 3; i++)
+		{
+			if (cells_voltage_index >= BMS_BATTERY_NUMBER_OF_CELLS)
+				break;
+
+			swap_endian(bms_packet_struct->cells_voltage[cells_voltage_index]);
+			obj_low_voltage_31_33.SetValue(i, bms_packet_struct->cells_voltage[cells_voltage_index++]);
+		}
+		
+		// 0x0056	BatteryPercent
 		// request | timer:10000
 		// uint8_t	%	1 + 1	{ type[0] val[1] }
 		//	<30: WARN, <15: CRIT, else: NORMAL
@@ -448,13 +511,15 @@ namespace CANLib
 		}
 		obj_battery_percent.SetValue(0, bms_packet_struct->percent, timer_type);
 
-		// 0x0054	BatteryPower
+		// 0x0057	BatteryPower
 		// request | timer:1000
 		// int16_t	Вт	1 + 2	{ type[0] w[1..2] }
 		// all: NORMAL
 		// Общая мощность потребления / зарядки.
 		// BMS data endian is already swapped
-		obj_battery_power.SetValue(0, bms_packet_struct->voltage * bms_packet_struct->current / 100000, CAN_TIMER_TYPE_NORMAL);
+		//obj_battery_power.SetValue(0, bms_packet_struct->voltage * bms_packet_struct->current / 100000, CAN_TIMER_TYPE_NORMAL);
+		swap_endian(bms_packet_struct->power);
+		obj_battery_power.SetValue(0, bms_packet_struct->power, CAN_TIMER_TYPE_NORMAL);
 
 		// 0x0046	MaxTemperature
 		// request | timer:5000 | event
