@@ -190,7 +190,7 @@ void readADC()
 
     for (uint8_t i = 0; i < ADC_CHANNEL_COUNT; ++i)
     {
-		DEBUG_LOG_TOPIC("ADC", "In: %2d, val: %4d\n", i+5, ADC_senors[i]);
+		//DEBUG_LOG_TOPIC("ADC", "In: %2d, val: %4d\n", i+5, ADC_senors[i]);
 
         if(ADC_senors[i] < 95U || ADC_senors[i] > 4000U)
         {
@@ -335,7 +335,7 @@ int main(void)
         if (FlagReciveUART3 == 1)
         {
 			//DEBUG_LOG_ARRAY_HEX("BMS2", bms_packet_data, sizeof(bms_packet_data));
-			DEBUG_LOG_TOPIC("BMS2", "RX loop()\n");
+			//DEBUG_LOG_TOPIC("BMS2", "RX loop()\n");
             CANLib::UpdateCANObjects_BMS(bms_packet_data);
             FlagReciveUART3 = 0;
         }

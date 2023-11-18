@@ -14,7 +14,7 @@ namespace CANLib
 	//*********************************************************************
 
 	/// @brief Number of CANObjects in CANManager
-	static constexpr uint8_t CFG_CANObjectsCount = 24;
+	static constexpr uint8_t CFG_CANObjectsCount = 25;
 
 	/// @brief The size of CANManager's internal CAN frame buffer
 	static constexpr uint8_t CFG_CANFrameBufferSize = 16;
@@ -70,10 +70,10 @@ namespace CANLib
 	CANObject<int8_t, 1> obj_max_temperature(0x0046, 5000, 300);
 
 	// 0x0047	LowVoltageMinMaxDelta
-	// request | event
+	// request | timer:5000 | event
 	// uint16_t	мВ	1 + 6	{ type[0] v1[1..2] v2[3..4] v3[5..6] }
 	// Напряжение на банках: Минимальное, Максимальное, Дельта.
-	CANObject<uint16_t, 3> obj_low_voltage_min_max_delta(0x0047, CAN_TIMER_DISABLED, 300);
+	CANObject<uint16_t, 3> obj_low_voltage_min_max_delta(0x0047, 5000, 300);
 
 	// 0x0048	Temperature1
 	// request
@@ -172,6 +172,13 @@ namespace CANLib
 	// all: NORMAL
 	// Общая мощность потребления / зарядки.
 	CANObject<int16_t, 1> obj_battery_power(0x0057, 250);
+
+	// 0x0058	BatteryState
+	// request | event
+	// int8_t	bitmask	1 + 1	{ type[0] val[1] }
+	// Состояние АКБ ( зарядка, разрядка, ... )
+	CANObject<int8_t, 1> obj_battery_state(0x0058);
+
 
 	inline void Setup()
 	{
@@ -290,7 +297,7 @@ namespace CANLib
 		uint32_t *BMS_header = (uint32_t *)bms_raw_packet_data;
 		if (*BMS_header != 0xFFAA55AA)
 		{
-			DEBUG_LOG("ERROR: BMS header error! Expected: 0x%08X, presented: 0x%08lX", 0xFFAA55AA, *BMS_header);
+			DEBUG_LOG_TOPIC("BMS", "Header error! Expected: 0x%08X, presented: 0x%08X\n", 0xFFAA55AA, *BMS_header);
 			
 			return;
 		}
@@ -303,7 +310,7 @@ namespace CANLib
 		if( ((crc >> 8) & 0xFF) != bms_raw_packet_data[138] || (crc & 0xFF) != bms_raw_packet_data[139])
 		{
 			//DEBUG_LOG("ERROR: BMS CRC error! Expected: 0x%04X, presented: 0x%04X", bms_raw_data_crc(bms_raw_packet_data), get_bms_raw_data_crc(bms_raw_packet_data));
-			DEBUG_LOG("ERROR: BMS CRC error!");
+			DEBUG_LOG_TOPIC("BMS", "CRC error!");
 			
 			return;
 		}
@@ -335,17 +342,28 @@ namespace CANLib
 		// obj_max_temperature.SetValue(0, (int8_t)0, CAN_TIMER_TYPE_NORMAL);
 
 		// 0x0047	LowVoltageMinMaxDelta
-		// request | event
+		// request | timer:5000 | event
 		// uint16_t	мВ	1 + 6	{ type[0] v1[1..2] v2[3..4] v3[5..6] }
 		// Ограничения: Согластно тех.паспорту банок АКБ
 		// Напряжение на банках: Минимальное, Максимальное, Дельта.
 		swap_endian(bms_packet_struct->vmin_voltage);
-		obj_low_voltage_min_max_delta.SetValue(0, bms_packet_struct->vmin_voltage, CAN_TIMER_TYPE_NONE, CAN_EVENT_TYPE_NONE);
-
 		swap_endian(bms_packet_struct->vmax_voltage);
-		obj_low_voltage_min_max_delta.SetValue(1, bms_packet_struct->vmax_voltage, CAN_TIMER_TYPE_NONE, CAN_EVENT_TYPE_NONE);
-
-		obj_low_voltage_min_max_delta.SetValue(2, bms_packet_struct->vmax_voltage - bms_packet_struct->vmin_voltage, CAN_TIMER_TYPE_NONE, CAN_EVENT_TYPE_NONE);
+		
+		timer_type_t timer_type = CAN_TIMER_TYPE_NORMAL;
+		event_type_t event_type = CAN_EVENT_TYPE_NONE;
+		
+		if(bms_packet_struct->vmin_voltage >= 2700 && bms_packet_struct->vmin_voltage <= 3000)
+		{
+			timer_type = CAN_TIMER_TYPE_WARNING;
+		}
+		else if(bms_packet_struct->vmin_voltage < 2700 || bms_packet_struct->vmax_voltage > 4200)
+		{
+			timer_type = CAN_TIMER_TYPE_CRITICAL;
+		}
+		
+		obj_low_voltage_min_max_delta.SetValue(0, bms_packet_struct->vmin_voltage, timer_type, event_type);
+		obj_low_voltage_min_max_delta.SetValue(1, bms_packet_struct->vmax_voltage, timer_type, event_type);
+		obj_low_voltage_min_max_delta.SetValue(2, (bms_packet_struct->vmax_voltage - bms_packet_struct->vmin_voltage), CAN_TIMER_TYPE_NONE, CAN_EVENT_TYPE_NONE);
 
 		// 0x0048	Temperature1
 		// request
@@ -500,16 +518,16 @@ namespace CANLib
 		// uint8_t	%	1 + 1	{ type[0] val[1] }
 		//	<30: WARN, <15: CRIT, else: NORMAL
 		// Уровень заряда АКБ, проценты.
-		timer_type_t timer_type = CAN_TIMER_TYPE_NORMAL;
+		timer_type_t timer_type1 = CAN_TIMER_TYPE_NORMAL;
 		if (bms_packet_struct->percent < 15)
 		{
-			timer_type = CAN_TIMER_TYPE_CRITICAL;
+			timer_type1 = CAN_TIMER_TYPE_CRITICAL;
 		}
 		else if (bms_packet_struct->percent < 30)
 		{
-			timer_type = CAN_TIMER_TYPE_WARNING;
+			timer_type1 = CAN_TIMER_TYPE_WARNING;
 		}
-		obj_battery_percent.SetValue(0, bms_packet_struct->percent, timer_type);
+		obj_battery_percent.SetValue(0, bms_packet_struct->percent, timer_type1);
 
 		// 0x0057	BatteryPower
 		// request | timer:1000
